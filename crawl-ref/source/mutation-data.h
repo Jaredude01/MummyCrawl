@@ -249,7 +249,7 @@ static const mutation_def mut_data[] =
     TILEG_MUT_FEED_OFF_SUFFERING,
 },
 
-{ MUT_SPARK_SWARM, 3, 2, mutflag::good,
+{ MUT_SPARK_SWARM, 2, 2, mutflag::good,
   "spark swarm",
 
   {"Foes burned or shocked in your presence may be outlined in light.",
@@ -2625,6 +2625,16 @@ static const mutation_def mut_data[] =
 
   {"You bear the Mark of the Fanatic.", "", ""},
   {"You will become an instrument of Makhleb's will.", "", ""},
+  {"", "", ""},
+
+  TILEG_MUT_MARK_OF_THE_FANATIC,
+},
+
+{ MUT_ROYAL_TASTES, 0, 1, mutflag::bad,
+  "Royal Tastes",
+
+  {"You can only wear, put, and wield artifact items.", "", ""},
+  {"You suddenly feel that jewels are not optional.", "", ""},
   {"", "", ""},
 
   TILEG_MUT_MARK_OF_THE_FANATIC,
