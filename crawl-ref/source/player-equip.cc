@@ -504,7 +504,12 @@ bool can_equip_item(const item_def& item, bool include_form, string* veto_reason
 
     // Now that we know that the player has access to a slot of an appropriate
     // type, is there some *other* reason they cannot wear this item?
-    if (item.base_type == OBJ_ARMOUR)
+    if (!is_artefact(item) && you.has_mutation(MUT_ROYAL_TASTES))
+        {
+				NO_EQUIP("This item is too mundane for your royal tastes")
+		}
+    
+    else if (item.base_type == OBJ_ARMOUR)
     {
         const size_type player_size = you.body_size(PSIZE_TORSO, !include_form);
         const equipment_slot slot = get_armour_slot(static_cast<armour_type>(item.sub_type));

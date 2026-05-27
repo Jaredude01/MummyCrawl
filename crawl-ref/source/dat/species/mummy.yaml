@@ -10,35 +10,35 @@ aptitudes:
   hp: 5
   mp_mod: 0
   wl: 5
-  fighting: 8
-  short_blades: 12
+  fighting: 20
+  short_blades: -2
   long_blades: -2
-  axes: 12
-  maces_and_flails: 12
-  polearms: 12
-  staves: 12
-  ranged weapons: 12
-  throwing: 12
-  armour: 15
-  dodging: 12
-  stealth: 12
-  shields: 12
-  unarmed_combat: 12
-  spellcasting: 12
-  conjurations: 12
-  hexes: 12
-  summoning: 15
-  forgecraft: 12
-  translocations: 15
-  shapeshifting: 15
-  fire_magic: 12
-  ice_magic: 12
-  air_magic: 12
-  earth_magic: 12
+  axes: -2
+  maces_and_flails: -2
+  polearms: 20
+  staves: 20
+  ranged weapons: -2
+  throwing: -2
+  armour: 20
+  dodging: 20
+  stealth: 20
+  shields: 20
+  unarmed_combat: -2
+  spellcasting: 20
+  conjurations: -2
+  hexes: -2
+  summoning: -2
+  forgecraft: -2
+  translocations: -2
+  shapeshifting: False
+  fire_magic: -2
+  ice_magic: -2
+  air_magic: -2
+  earth_magic: -2
   necromancy: 20
-  alchemy: 12
-  invocations: 12
-  evocations: 12
+  alchemy: -2
+  invocations: -2
+  evocations: -2
 undead_type: undead
 str: 28
 int: 18
