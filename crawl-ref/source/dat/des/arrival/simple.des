@@ -11,13 +11,14 @@ TAGS:   arrival no_monster_gen
 MONS:   plant
 ORIENT: float
 SUBST:  s = hhh..
+KFEAT:  T = enter_tomb
 KITEM:  h = human skeleton
 KITEM: e = scythe of curses
 MAP
 xxxxxxxxxxxxxx.xxxxxxxxxxxxxx
  tt.......................tt
  tt..G..G...........G..G..tt
- tt...ss.............ss...tt
+ tt...ss.......T.....ss...tt
 ttt...ss.............ss...ttt
 tt...G..G...........G..G...tt
 tt............{............tt

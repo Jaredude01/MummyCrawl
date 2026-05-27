@@ -21,6 +21,7 @@ KPROP:   M = no_tele_into
 NSUBST:  M = 2:E / * = M E:2
 KFEAT:   E = trap_teleport_permanent
 KFEAT:   MNOQR = shallow_water
+KFEAT:  T = enter_tomb
 SHUFFLE: M/N/O/P/Q/R
 SUBST:   P = MNO
 KMASK:   EMNOQR = no_item_gen
@@ -66,7 +67,7 @@ xxxxxxxcccccccxxxxxcccccccccxx
 xxxxxxccMcMcMcccccccMcMcMcMcxx
 xxxxxcccncncncMcMcMcncncncncccc@c
 xxxxxcc......cncncnc.......nMcc+cc
-xxxxxc{..............cncnc.cnc...ccc
+xxxxxc{...T..........cncnc.cnc...ccc
 xxxxxcc.....e....cncncMcMn.....>.nMc
 xxxxxcccncncncncncMcMcccccncnc...ccc
 xxxxxxccMcMcMcMcMcccccxxxcMcMcc+cc
