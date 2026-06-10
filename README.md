@@ -1,95 +1,21 @@
 [![Build Status](https://github.com/crawl/crawl/workflows/Build/badge.svg)](https://github.com/crawl/crawl/actions/)
 
-# Dungeon Crawl Stone Soup
+# Mummy Crawl Stone Soup
 
-Dungeon Crawl Stone Soup is a game of dungeon exploration, combat and magic, involving characters of diverse skills, worshipping deities of great power and caprice. To win, you'll need to be a master of tactics and strategy, and prevail against overwhelming odds.
+Mummy Crawl Stone Soup is a game of dungeon exploration, combat and magic, involving mummies of necromantic skills, worshipping Kiku of great power and caprice. To win, you'll need to be kind of good at tactics and strategy, and prevail against overwhelming odds.
 
-## Contents
+After killing many mummy characters I modified the mummy species for some cathartic dungeonblasting.
+Those modifications led me to trying different things to familiarize myself with how crawl works so I can contribute at some point in the future.
 
-1. [How to Play](#how-to-play)
-3. [Community](#community)
-5. [How you can help](#how-you-can-help)
-4. [License and history information](#license-and-history-information)
+## Changes from dungeon crawl
+Necromancer starts with Kiku and all the of the necromancy spells I care about.
+Modified the Lucky mutation to give a 2/3 chance of changing items into artifacts.
+Created Royal Tastes mutation to only allow equipping artifacts.
+Gave the mummy great aptitudes and mutations while I'm testing stuff, I expect I'll probably tone that down at some point
 
-## How to Play
-
-For information on how to install the game, please visit [the installation documentation](crawl-ref/INSTALL.md).
-
-If you'd like to dive in immediately, we suggest one of:
-
-* Start a game and pick a tutorial (select tutorial in the game menu),
-* Read [quickstart.md](crawl-ref/docs/quickstart.md) (in the [docs/](crawl-ref/docs/) directory), or
-* For the studious, [read Crawl's full manual](crawl-ref/docs/crawl_manual.rst).
-
-There is also an ingame list of frequently asked questions which you can access by typing
-`?Q`.
-
-#### Internet Play
-
-You can play Crawl online, competing with other players or watching them. Click "Play Online Now!" on [the Crawl homepage](https://crawl.develz.org/) to find your closest server. You can play in your browser or over SSH.
-
-#### Offline Play
-
-Both classical ASCII and tiles (GUI) versions of Crawl are available to [download for Linux, Windows and OS X](https://crawl.develz.org/download.htm).
-
-## Community
-
-* Our official homepage: [crawl.develz.org](https://crawl.develz.org/)
-  * Online webtiles play
-  * Offline downloads
-  * Our community forum: [tavern.dcss.io](https://tavern.dcss.io/)
-* [/r/roguelikes Discord](https://discord.gg/S5F2H32)
-* The [/r/dcss subreddit](https://www.reddit.com/r/dcss/)
-* IRC: #crawl on Libera (or #crawl-dev to chat development)
-
-## How you can help
-
-If you like the game and you want to help make it better, there are a number
-of ways to do so. For a detailed guide to the crawl workflow, look at
-the [contributor's guide](crawl-ref/docs/develop/contribution-process.md).
-
-### Reporting bugs
-
-At any time, there will be bugs -- finding and reporting them is a great help.
-Many of the online servers host the regularly updated development version. Bugs
-should be reported to [our github issue
-tracker](https://github.com/crawl/crawl/issues). Thoughtful ideas on how to
-improve interface or gameplay are welcome, but it's often best to
-[discuss](#community) changes before opening an issue or pull request.
-
-### Map making
-Crawl creates levels by combining many hand-made (but often randomised) maps,
-known as *vaults*. Making them is fun and easy. It's best to start with simple
-entry vaults: see [simple.des](crawl-ref/source/dat/des/arrival/simple.des) for
-examples. You can also read [the level-design manual](crawl-ref/docs/develop/levels/introduction.txt) for more help.
-
-If you're ambitious, you can create new vaults for anywhere in the game. If
-you've made some vaults, you can test them on your own system (no compiling
-needed) and submit them via a github pull request. See the [contributor's guide](crawl-ref/docs/develop/contribution-process.md) for details.
-
-### Monster Speech & Item Descriptions
-Monster speech provides a lot of flavour. Just like vaults, varied speech depends
-upon a large set of entries. Speech syntax is effective but unusual, so you may want to read [the formatting guide](crawl-ref/docs/develop/monster_speech.txt).
-
-Current item descriptions can be read in-game with `?/` or out-of-game
-them in [dat/descript/](crawl-ref/source/dat/descript/). The following conventions should be more or less obeyed:
-* Descriptions ought to contain flavour text, ideally pointing out major weaknesses/strengths.
-* No numbers, please.
-* Citations are okay, but try to stay away from the most generic ones.
-
-### Tiles
-We're always open to improvements to existing tiles or variants of often-used
-tiles (eg floor tiles). If you want to give this a shot, please [contact us](#community). In case you drew some tiles of your own, you can simply share
-them with a developer or submit them via a github pull request. See the
-[contributor's guide](crawl-ref/docs/develop/contribution-process.md) for
-details.
-
-### Patches
-For developers (both existing & aspiring!), you can download/fork the source code and write patches. Bug fixes as well as new features are very much welcome.
-
-For large changes, it's always a good idea to [talk with the dev team](#community) first, to see if any plans already exist and if your suggestion is likely to be accepted.
-
-Please be sure to read [docs/develop/coding_conventions.md](crawl-ref/docs/develop/coding_conventions.md) too.
+## Planned Changes
+Mummy and Necromancer are the only selectable species and class.
+Tomb replaces the dungeon exit and you must bring the orb of zot to a special Kiku altar inside to beat the game.
 
 ## License and history information
 
