@@ -16,7 +16,8 @@ MONS:   rat / nothing w:50
 FTILE:  `t = floor_grass_dark, 1'G_> = floor_limestone
 COLOUR: ` = green, 1'G = white
 KPROP:  ` = no_tele_into
-SUBST:  V = VVVT, H = ....H
+SUBST:  V = VVVV, H = ....H
+KFEAT:  T = enter_tomb
 # Why elves..?
 KITEM:  H = human skeleton / elf skeleton
 KITEM: e = scythe of curses
@@ -35,7 +36,7 @@ MAP
   ctc...........ctc
   ctn...........ntc
  cctc...........ctc
- cttc...........ctc
+ cttc......T....ctc
  ct`n...........ntccc
  cttc...........ctc1+
   ccc..cc...cc..cccHc

@@ -37,6 +37,7 @@ KFEAT:  t = petrified_tree
 : end
 KFEAT:  J = abandoned_shop / shaft / granite_statue
 KFEAT:  K = web
+KFEAT:  T = enter_tomb
 KITEM:  K = skeleton / corpse / nothing
 KITEM: e = scythe of curses
 MAP
@@ -46,7 +47,7 @@ MAP
 ..pttp...pt'...
 ..'ptp..'.p.'p..
  ...p......{ptp.
-  ....'...ppttp.
+  ....'.T.ppttp.
     .'...pttttp.
      ...'ppttp..
       ...'p'pp..
