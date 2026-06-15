@@ -1494,24 +1494,9 @@ bool monster::wants_weapon(const item_def &weap) const
         return false;
     }
 
-    // Holy monsters that aren't gifts/worshippers of chaotic gods
-    // and monsters that are gifts/worshippers of good gods won't
-    // use potentially evil weapons.
-    if (((is_holy() && !is_chaotic_god(god))
-            || is_good_god(god))
-        && is_potentially_evil_item(weap))
-    {
-        return false;
-    }
-
     // Holy monsters and monsters that are gifts/worshippers of good
     // gods won't use evil weapons.
     if ((is_holy() || is_good_god(god)) && is_evil_item(weap))
-        return false;
-
-    // Monsters that are gifts/worshippers of Zin won't use unclean
-    // weapons.
-    if (god == GOD_ZIN && is_unclean_item(weap))
         return false;
 
     // Holy monsters that aren't gifts/worshippers of chaotic gods
@@ -2231,9 +2216,9 @@ string monster::hand_name(bool plural, bool *can_plural) const
     *can_plural = true;
 
     string str;
-    char ch = mons_base_char(mons_is_pghost(type)
-                             ? species::to_mons_species(ghost->species)
-                             : type);
+    char32_t ch = mons_base_char(mons_is_pghost(type)
+                                 ? species::to_mons_species(ghost->species)
+                                 : type);
 
     const bool rand = (type == MONS_CHAOS_SPAWN);
 
@@ -2247,8 +2232,13 @@ string monster::hand_name(bool plural, bool *can_plural) const
     case MON_SHAPE_HUMANOID_WINGED:
     case MON_SHAPE_HUMANOID_TAILED:
     case MON_SHAPE_HUMANOID_WINGED_TAILED:
-        if (ch == 'T' || ch == 'n' || mons_is_demon(type))
+        if (mons_is_demon(type)
+            || mons_genus(type) == MONS_TROLL
+            || mons_genus(type) == MONS_REVENANT
+            || mons_genus(type) == MONS_GHOUL)
+        {
             str = "claw";
+        }
         break;
 
     case MON_SHAPE_QUADRUPED:
@@ -2365,9 +2355,9 @@ string monster::foot_name(bool plural, bool *can_plural) const
 
     string str;
 
-    char ch = mons_base_char(mons_is_pghost(type)
-                             ? species::to_mons_species(ghost->species)
-                             : type);
+    char32_t ch = mons_base_char(mons_is_pghost(type)
+                                 ? species::to_mons_species(ghost->species)
+                                 : type);
 
     const bool rand = (type == MONS_CHAOS_SPAWN);
 
@@ -2384,7 +2374,7 @@ string monster::foot_name(bool plural, bool *can_plural) const
     case MON_SHAPE_HUMANOID_WINGED:
     case MON_SHAPE_HUMANOID_TAILED:
     case MON_SHAPE_HUMANOID_WINGED_TAILED:
-        if (type == MONS_MINOTAUR)
+        if (mons_genus(type) == MONS_MINOTAUR)
             str = "hoof";
         else if (swimming() && mons_genus(type) == MONS_MERFOLK)
         {
@@ -2407,18 +2397,21 @@ string monster::foot_name(bool plural, bool *can_plural) const
         }
         else if (mons_genus(type) == MONS_HOG)
             str = "trotter";
-        else if (ch == 'h')
-            str = "paw";
-        else if (ch == 'l' || ch == 'D')
-            str = "talon";
-        else if (type == MONS_YAK || type == MONS_DEATH_YAK)
-            str = "hoof";
-        else if (ch == 'H')
+        else if (mons_genus(type) == MONS_HOUND
+                 || mons_genus(type) == MONS_FELID
+                 || mons_genus(type) == MONS_SPHINX
+                 || type == MONS_MANTICORE)
         {
-            if (type == MONS_MANTICORE || mons_genus(type) == MONS_SPHINX)
-                str = "paw";
-            else
-                str = "talon";
+            str = "paw";
+        }
+        else if (mons_genus(type) == MONS_DRAGON)
+            str = "talon";
+        else if (mons_genus(type) == MONS_YAK
+                 || mons_genus(type) == MONS_ELEPHANT
+                 || type == MONS_DREAM_SHEEP
+                 || type == MONS_APIS)
+        {
+            str = "hoof";
         }
         break;
 
@@ -2819,9 +2812,16 @@ bool monster::immune_to_silence() const
     return true;
 }
 
+static bool _is_unclean_spell(spell_type spell)
+{
+    spell_flags flags = get_spell_flags(spell);
+
+    return bool(flags & spflag::unclean);
+}
+
 bool monster::has_unclean_spell() const
 {
-    return search_spells(is_unclean_spell);
+    return search_spells(_is_unclean_spell);
 }
 
 bool monster::has_chaotic_spell() const
@@ -5915,7 +5915,7 @@ bool monster::matches_player_speed() const
 
 int monster::player_speed_energy() const
 {
-    const int pmove = player_movement_speed() * player_speed();
+    const int pmove = player_overall_move_delay(BASELINE_DELAY);
     return div_rand_round(speed * pmove, 100);
 }
 

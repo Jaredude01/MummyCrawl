@@ -1367,7 +1367,7 @@ string ability_name(ability_type ability, bool dbname)
             }
 
         case ABIL_SIF_MUNA_REPEAT_EXEGESIS:
-            if (dbname)
+            if (dbname || !you.props.exists(EXEGESIS_SPELL))
                 return "Repeat Exegesis";
             else
                 return make_stringf("Recast %s", spell_title(static_cast<spell_type>(you.props[EXEGESIS_SPELL].get_int())));
@@ -3038,7 +3038,6 @@ static bool _evoke_staff_of_olgreb(dist *target)
     {
         return false;
     }
-    did_god_conduct(DID_WIZARDLY_ITEM, 10);
     return true;
 }
 
@@ -3327,7 +3326,7 @@ static spret _do_ability(const ability_def& abil, bool fail, dist *target,
             if (success == OPER_NONE)
                 return spret::abort;
 
-            if (god_hates_item(*wpn))
+            if (god_forbids_item(*wpn))
             {
                 mprf(MSGCH_WARN, "%s forbids using such a weapon!",
                      god_name(you.religion).c_str());
@@ -3625,7 +3624,6 @@ static spret _do_ability(const ability_def& abil, bool fail, dist *target,
                               10 + random2avg(you.skill(SK_INVOCATIONS, 6), 2),
                               100);
 
-        did_god_conduct(DID_HASTY, 8); // Currently irrelevant.
         break;
 
     case ABIL_OKAWARU_DUEL:
@@ -4395,9 +4393,15 @@ bool player_has_ability(ability_type abil, bool include_unusable)
     case ABIL_ENKINDLE:
         return you.has_mutation(MUT_MNEMOPHAGE);
     case ABIL_IMBUE_SERVITOR:
-        return you.has_spell(SPELL_SPELLSPARK_SERVITOR);
+        return you.has_spell(SPELL_SPELLSPARK_SERVITOR)
+                || (you.spell_library[SPELL_SPELLSPARK_SERVITOR]
+                    && you_worship(GOD_SIF_MUNA)
+                    && player_has_ability(ABIL_SIF_MUNA_DIVINE_EXEGESIS));
     case ABIL_IMPRINT_WEAPON:
-        return you.has_spell(SPELL_PLATINUM_PARAGON);
+        return you.has_spell(SPELL_PLATINUM_PARAGON)
+                || (you.spell_library[SPELL_PLATINUM_PARAGON]
+                    && you_worship(GOD_SIF_MUNA)
+                    && player_has_ability(ABIL_SIF_MUNA_DIVINE_EXEGESIS));
     // mutations
     case ABIL_DAMNATION:
         return you.get_mutation_level(MUT_HURL_DAMNATION);

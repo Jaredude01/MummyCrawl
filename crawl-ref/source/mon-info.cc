@@ -256,7 +256,8 @@ static bool _is_public_key(string key)
      || key == POLY_SET_KEY
      || key == NOBODY_MEMORIES_KEY
      || key == ORIGINAL_TYPE_KEY
-     || key == SPLINTERFROST_POWER_KEY)
+     || key == SPLINTERFROST_POWER_KEY
+     || key == TREE_POSITION_KEY)
     {
         return true;
     }
@@ -1089,8 +1090,8 @@ string monster_info::_core_name() const
             {
                 switch (spells[0].spell)
                 {
-                case SPELL_BANISHMENT:
-                    s = "living banishment spell";
+                case SPELL_PETRIFY:
+                    s = "living petrification spell";
                     break;
                 case SPELL_LEHUDIBS_CRYSTAL_SPEAR:
                     s = "living crystal spell";
@@ -1098,10 +1099,11 @@ string monster_info::_core_name() const
                 case SPELL_SMITING:
                     s = "living smiting commandment";
                     break;
-                case SPELL_PARALYSE:
-                    s = "living paralysis spell";
+                case SPELL_ICEBLAST:
+                    s = "living iceblast spell";
                     break;
                 default:
+                    s = make_stringf("living %s spell", lowercase_string(spell_title(spells[0].spell)).c_str());
                     break;
                 }
             }
@@ -1410,7 +1412,7 @@ string monster_info::pluralised_name(bool fullname) const
     else if ((type == MONS_UGLY_THING || type == MONS_VERY_UGLY_THING
                 || type == MONS_DANCING_WEAPON || type == MONS_SPECTRAL_WEAPON
                 || type == MONS_ARMOUR_ECHO || type == MONS_MUTANT_BEAST
-                || type == MONS_HAUNTED_ARMOUR
+                || type == MONS_HAUNTED_ARMOUR || type == MONS_LIVING_SPELL
                 || !fullname)
             && !is(MB_NAME_REPLACE))
 

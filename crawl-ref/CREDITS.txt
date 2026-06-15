@@ -319,7 +319,6 @@
     Erkki Nurmi
     Mattias Nyberg
     nyra
-    Odds
     Weston Odom
     Dylan O'Donnell
     Heinrich Ody
@@ -450,6 +449,7 @@
     Yelve Yakut
     Edward Z. Yang
     Yermak
+    Christopher 'GoodKnight' Yim
     YLam
     Andrew G. York
     Rob Young
@@ -503,6 +503,7 @@ The Dungeon Crawl Stone Soup development team is:
     Neil Moore
     nicolae
     Steven Noonan
+    Odds
     Stefan O'Rear
     Charles Otto
     Aaron Pixton

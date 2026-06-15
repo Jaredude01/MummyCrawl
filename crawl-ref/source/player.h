@@ -258,8 +258,6 @@ public:
     FixedVector<training_status, NUM_SKILLS> train; ///< see enum def
     FixedVector<training_status, NUM_SKILLS> train_alt; ///< config of other mode
     FixedVector<unsigned int, NUM_SKILLS>  training; ///< percentage of XP used
-    FixedBitVector<NUM_SKILLS> can_currently_train; ///< Is training this skill allowed?
-    FixedBitVector<NUM_SKILLS> should_show_skill; ///< Is this skill shown by default?
     FixedVector<unsigned int, NUM_SKILLS> skill_points;
     FixedVector<unsigned int, NUM_SKILLS> training_targets; ///< Training targets, scaled by 10 (so [0,270]).  0 means no target.
     int experience_pool; ///< XP waiting to be applied.
@@ -271,8 +269,6 @@ public:
     bool auto_training;
     list<skill_type> exercises;     ///< recent practise events
     list<skill_type> exercises_all; ///< also include events for disabled skills
-    set<skill_type> skills_to_hide;     ///< need to check if it should still be shown in the skill menu
-    set<skill_type> skills_to_show;    ///< we can un-hide in the skill menu
 
     // Skill menu states
     skill_menu_state skill_menu_do;
@@ -1084,7 +1080,7 @@ public:
 };
 
 bool check_moveto(const coord_def& p, const string &move_verb = "step",
-                  bool physically = true);
+                  bool check_harmful = true, bool physically = true);
 bool check_moveto_terrain(const coord_def& p, const string &move_verb,
                           const string &msg = "", bool *prompted = nullptr);
 bool check_moveto_cloud(const coord_def& p, const string &move_verb = "step",
@@ -1128,8 +1124,6 @@ bool player_effectively_in_light_armour();
 int player_shield_racial_factor();
 int player_armour_shield_spell_penalty();
 int player_armour_stealth_penalty();
-
-int player_movement_speed(bool check_terrain = true, bool temp = true);
 
 int player_icemail_armour_class();
 int player_condensation_shield_class();
@@ -1183,7 +1177,14 @@ int player_spec_summ();
 int player_spec_forgecraft();
 int player_spec_tloc();
 
-int player_speed();
+// Delay for a normally-10-aut action
+int player_speed(int scale = 1);
+// Delay for a movement action (ignoring player_speed)
+int player_movement_speed(bool check_terrain = true, bool temp = true,
+                          int scale = 1);
+// Final delay for a movement action, including speed and movement speed
+int player_overall_move_delay(int scale = 1, bool check_terrain = true,
+                              bool temp = true, bool sampled = true);
 
 int player_spell_levels(bool floored = true);
 int player_total_spell_levels();

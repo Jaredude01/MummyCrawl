@@ -1308,13 +1308,14 @@ static string _skill_target_desc(skill_type skill, int scaled_target,
  * current training rate.
  */
 static void _append_skill_target_desc(string &description, skill_type skill,
-                                        int scaled_target)
+                                        int scaled_target, int indent)
 {
+    const string prefix = "\n" + string(indent, ' ');
     if (!you.has_mutation(MUT_DISTRIBUTED_TRAINING))
-        description += "\n    " + _skill_target_desc(skill, scaled_target, 100);
+        description += prefix + _skill_target_desc(skill, scaled_target, 100);
     if (you.training[skill] > 0 && you.training[skill] < 100)
     {
-        description += "\n    " + _skill_target_desc(skill, scaled_target,
+        description += prefix + _skill_target_desc(skill, scaled_target,
                                                     you.training[skill]);
     }
 }
@@ -1330,9 +1331,9 @@ static string _desc_attack_delay(const item_def &item)
             artefact_set_property(dummy, ARTP_BRAND, SPWPN_NORMAL);
     }
 
-    const int cur_delay = you.attack_delay_with(&dummy).expected();
+    const float cur_delay = you.attack_delay_with(&dummy).expected();
 
-    return make_stringf("\n    Current attack delay: %.1f.", (float)cur_delay / 10);
+    return make_stringf("\n    Current attack delay: %.1f.", cur_delay / 10);
 }
 
 static string _describe_missile_dmg_brand(const item_def &item)
@@ -1470,7 +1471,26 @@ static void _append_skill_needed(string &description, const item_def &item,
     }
 
     if (below_target)
-        _append_skill_target_desc(description, skill, target_skill);
+        _append_skill_target_desc(description, skill, target_skill, 4);
+}
+
+static void _append_penalty(string &description, const item_def *source,
+                            const int penalty, const int penalty_scale)
+{
+    if (!source)
+        return;
+    description += "\n";
+    description += uppercase_first(source->name(DESC_YOUR));
+
+    if (penalty >= penalty_scale)
+    {
+        description += make_stringf(" slows your attacks with this weapon by %.1f",
+                       penalty / (10.0f * penalty_scale));
+    }
+    else
+        description += " slightly slows your attacks with this weapon";
+
+    description += ".";
 }
 
 static void _append_weapon_stats(string &description, const item_def &item)
@@ -1514,34 +1534,41 @@ static void _append_weapon_stats(string &description, const item_def &item)
 
     _append_skill_needed(description, item);
 
-    if (is_slowed_by_armour(&item))
+    // Add penalties for armour and shield.
+    const int penalty_scale = 20;
+    vector<string> would_slow;
+    if (is_slowed_by_armour(&item) && you_can_wear(SLOT_BODY_ARMOUR) != false)
     {
-        const int penalty_scale = 100;
-        const int armour_penalty = you.adjusted_body_armour_penalty(penalty_scale, true);
-        description += "\n";
-        if (armour_penalty)
+        const int body_armour_penalty =
+            you.adjusted_body_armour_penalty(penalty_scale, true);
+        if (body_armour_penalty)
         {
-            const item_def *body_armour = you.body_armour();
-            description += (body_armour ? uppercase_first(
-                                              body_armour->name(DESC_YOUR))
-                                        : "Your heavy armour");
-
-            const bool significant = armour_penalty >= penalty_scale;
-            if (significant)
-            {
-                description +=
-                    make_stringf(" slows your attacks with this weapon by %.1f",
-                                 armour_penalty / (10.0f * penalty_scale));
-            }
-            else
-                description += " slightly slows your attacks with this weapon";
+            _append_penalty(description, you.body_armour(),
+                            body_armour_penalty, penalty_scale);
         }
         else
+            would_slow.push_back("heavy armour");
+    }
+
+    const item_def *shield = you.shield();
+    if (you.skill(SK_SHIELDS) < MAX_SKILL_LEVEL
+        && you_can_wear(SLOT_OFFHAND) != false)
+    {
+        if (shield)
         {
-            description += "Wearing heavy armour would reduce your attack "
-                           "speed with this weapon";
+            _append_penalty(description, shield,
+                            you.adjusted_shield_penalty(penalty_scale), penalty_scale);
         }
-        description += ".";
+        else
+            would_slow.push_back("a shield");
+    }
+
+    if (!would_slow.empty())
+    {
+        description += "\nWearing "
+                       + comma_separated_line(would_slow.begin(),
+                                              would_slow.end(), " or ")
+                       + " would reduce your attack speed with this weapon.";
     }
 
     const bool want_player_stats = !is_useless_item(item) && crawl_state.need_save;
@@ -2514,18 +2541,15 @@ bool is_dumpable_artefact(const item_def &item)
     return is_artefact(item) && item.is_identified();
 }
 
-static string &_trogsafe_lowercase(string &s)
+static string &_godsafe_lowercase(string &s)
 {
-    // hardcoding because of amnesia and brilliance msgs
-    if (!starts_with(s, "Trog"))
+    if (!starts_with(s, god_name(you.religion)))
         s = lowercase_first(s);
     return s;
 }
 
 static string _cannot_use_reason(const item_def &item, bool temp=true)
 {
-    // right now, description uselessness reasons only work for these four
-    // item types..
     switch (item.base_type)
     {
     case OBJ_SCROLLS: return cannot_read_item_reason(&item, temp);
@@ -2533,7 +2557,24 @@ static string _cannot_use_reason(const item_def &item, bool temp=true)
     case OBJ_BAUBLES:
     case OBJ_MISCELLANY:
     case OBJ_WANDS:   return cannot_evoke_item_reason(&item, temp);
-    default: return "";
+    case OBJ_WEAPONS:
+    case OBJ_STAVES:
+    case OBJ_ARMOUR:
+    case OBJ_JEWELLERY:
+        {
+            string reason;
+            can_equip_item(item, temp, &reason);
+            return reason;
+        }
+    default:
+        // Non-equippable types (e.g. ammo) have no can_equip_item reason, but
+        // can still be outright forbidden by your god.
+        if (god_forbids_item(item, temp))
+        {
+            return make_stringf("%s forbids the use of this item.",
+                                uppercase_first(god_name(you.religion)).c_str());
+        }
+        return "";
     }
 }
 
@@ -2583,7 +2624,7 @@ static void _uselessness_desc(ostringstream &description, const item_def &item)
             r = _cannot_use_reason(item, true);
         }
         if (!r.empty())
-            description << ": " << _trogsafe_lowercase(r);
+            description << ": " << _godsafe_lowercase(r);
         else
             description << "."; // reasons always come with punctuation
     }
@@ -2713,6 +2754,8 @@ string get_item_description(const item_def &item,
             need_extra_line = false;
         else
             description << desc;
+        if (verbose && mode != IDM_MONSTER)
+            _uselessness_desc(description, item);
         break;
 
     case OBJ_ARMOUR:
@@ -2721,12 +2764,16 @@ string get_item_description(const item_def &item,
             need_extra_line = false;
         else
             description << desc;
+        if (verbose && mode != IDM_MONSTER)
+            _uselessness_desc(description, item);
         break;
 
     case OBJ_JEWELLERY:
         desc = _describe_jewellery(item, verbose);
         if (!desc.empty())
             description << desc;
+        if (verbose && mode != IDM_MONSTER)
+            _uselessness_desc(description, item);
         break;
 
     case OBJ_BOOKS:
@@ -2747,6 +2794,8 @@ string get_item_description(const item_def &item,
 
     case OBJ_MISSILES:
         description << _describe_ammo(item);
+        if (verbose && mode != IDM_MONSTER)
+            _uselessness_desc(description, item);
         break;
 
     case OBJ_CORPSES:
@@ -2773,6 +2822,8 @@ string get_item_description(const item_def &item,
             description << "\n\nIt falls into the 'Staves' category. ";
             description << _handedness_string(item);
         }
+        if (verbose && mode != IDM_MONSTER)
+            _uselessness_desc(description, item);
         break;
 
     case OBJ_MISCELLANY:
@@ -2967,12 +3018,6 @@ string get_item_description(const item_def &item,
                 description << "\nIt is an ancient artefact.";
             }
         }
-    }
-
-    if (god_hates_item(item))
-    {
-        description << "\n\n" << uppercase_first(god_name(you.religion))
-                    << " disapproves of the use of such an item.";
     }
 
     if (verbose && origin_describable(item))
@@ -3341,9 +3386,9 @@ void get_feature_desc(const coord_def &pos, describe_info &inf, bool include_ext
         }
     }
 
-    // mention that permanent trees are usually flammable
+    // mention that trees are usually flammable
     // (except for autumnal trees in Wucad Mu's Monastery)
-    if (feat_is_flammable(feat) && !is_temp_terrain(pos) && in_bounds(pos)
+    if (feat_is_flammable(feat) && in_bounds(pos)
         && env.markers.property_at(pos, MAT_ANY, "veto_destroy") != "veto")
     {
         if (feat == DNGN_TREE)
@@ -4297,6 +4342,17 @@ string get_skill_description(skill_type skill, bool need_title)
 
     result += getLongDescription(lookup);
 
+    const int target = you.get_training_target(skill);
+    if (target > 0 && target <= 270 && target > you.skill(skill, 10))
+    {
+        result +=  make_stringf("\nYour current training target is %.1f.",
+                                target / 10.0);
+
+        _append_skill_target_desc(result, skill, target, 0);
+
+        result += "\n";
+    }
+
     if ((skill == SK_ARMOUR || skill == SK_DODGING || skill == SK_SHIELDS)
         && you.skills[skill] < MAX_SKILL_LEVEL && !is_useless_skill(skill))
     {
@@ -4324,11 +4380,11 @@ string get_skill_description(skill_type skill, bool need_title)
                     " of Invocations skill.";
     }
 
-    if (is_harmful_skill(skill))
+    if (is_forbidden_skill(skill))
     {
         result += "\n";
         result += uppercase_first(god_name(you.religion))
-                  + " strongly dislikes when you train this skill.";
+                  + " forbids the training of this skill.";
     }
 
     return result;
@@ -4498,12 +4554,7 @@ static string _player_spell_desc(spell_type spell)
                     << " summoned by this spell.\n";
     }
 
-    if (god_hates_spell(spell, you.religion))
-    {
-        description << uppercase_first(god_name(you.religion))
-                    << " frowns upon the use of this spell.\n";
-    }
-    else if (god_likes_spell(spell, you.religion))
+    if (god_likes_spell(spell, you.religion))
     {
         description << uppercase_first(god_name(you.religion))
                     << " supports the use of this spell.\n";
@@ -4516,7 +4567,7 @@ static string _player_spell_desc(spell_type spell)
     {
         description << "\nYou cannot "
                     << (you.has_spell(spell) ? "cast" : "memorise")
-                    << " this spell because "
+                    << " this spell: "
                     << desc_cannot_memorise_reason(spell)
                     << "\n";
     }
@@ -6596,7 +6647,9 @@ static string _desc_shooting_star_dam(const monster_info &mi)
 static string _desc_splinterfrost_dam(const monster_info &mi)
 {
     bolt beam;
-    const int pow = mi.props[SPLINTERFROST_POWER_KEY].get_int();
+    int pow = mi.hd;
+    if (mi.props.exists(SPLINTERFROST_POWER_KEY))
+        pow = mi.props[SPLINTERFROST_POWER_KEY].get_int();
     zappy(ZAP_SPLINTERFROST_FRAGMENT, pow, mi.summoner_id != MID_PLAYER, beam);
     return make_stringf("%dd%d", beam.damage.num, beam.damage.size);
 }

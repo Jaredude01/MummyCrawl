@@ -174,15 +174,22 @@ static int _get_mons_colour(const monster_info& mi)
     // assuming the user has not remapped their colour.
     if (col == mons_class_colour(mi.type))
     {
-        if (mi.type == MONS_SLIME_CREATURE && mi.slime_size > 1)
-            col = LIGHTGREEN;
-        else if (mi.type == MONS_ZOMBIE && mons_zombie_size(mi.base_type) == Z_BIG)
+        if (mi.type == MONS_SLIME_CREATURE)
+        {
+            if (mi.slime_size == 2)
+                col = LIGHTBLUE;
+            else if (mi.slime_size > 2 && mi.slime_size <= 4)
+                col = LIGHTCYAN;
+            else if (mi.slime_size == 5)
+                col = LIGHTMAGENTA;
+        }
+        else if (mi.type == MONS_ZOMBIE && mi.hd > 10)
             col = YELLOW;
-        else if (mi.type == MONS_SIMULACRUM && mons_zombie_size(mi.base_type) == Z_BIG)
+        else if (mi.type == MONS_SIMULACRUM && mi.hd > 10)
             col = LIGHTCYAN;
-        else if (mi.type == MONS_DRAUGR && mons_zombie_size(mi.base_type) == Z_BIG)
+        else if (mi.type == MONS_DRAUGR && mi.hd > 10)
             col = WHITE;
-        else if (mi.type == MONS_SPECTRAL_THING && mons_zombie_size(mi.base_type) == Z_BIG)
+        else if (mi.type == MONS_SPECTRAL_THING && mi.hd > 10)
             col = LIGHTGREEN;
     }
 

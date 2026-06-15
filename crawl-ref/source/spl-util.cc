@@ -20,6 +20,7 @@
 #include "coordit.h"
 #include "directn.h"
 #include "env.h"
+#include "god-conduct.h"
 #include "god-passive.h"
 #include "god-abil.h"
 #include "item-prop.h"
@@ -410,8 +411,6 @@ bool add_spell_to_memory(spell_type spell)
 
     take_note(Note(NOTE_LEARN_SPELL, spell));
 
-    spell_skills(spell, you.skills_to_show);
-
 #ifdef USE_TILE_LOCAL
     tiles.layout_statcol();
     redraw_screen();
@@ -427,8 +426,6 @@ bool del_spell_from_memory_by_slot(int slot)
 
     if (you.last_cast_spell == you.spells[slot])
         you.last_cast_spell = SPELL_NO_SPELL;
-
-    spell_skills(you.spells[slot], you.skills_to_hide);
 
     mprf("Your memory of %s unravels.", spell_title(you.spells[slot]));
 
@@ -1184,13 +1181,17 @@ bool casting_is_useless(spell_type spell, bool temp)
  * groups of spells (e.g. entire schools). Includes MP (which does use the
  * spell level if provided), confusion state, banned schools.
  *
- * @param spell      The spell in question.
- * @param temp       Include checks for volatile or temporary states
- *                   (status effects, mana)
- # @return           A reason why casting is useless, or "" if it isn't.
+ * @param spell             The spell in question.
+ * @param temp              Include checks for volatile or temporary states
+ *                          (status effects, mana)
+ * @param god_forbids[out]  If the player cannot use this item, set to whether
+ *                          the reason is god-based.
+ # @return                  A reason why casting is useless, or "" if it isn't.
  */
-string casting_uselessness_reason(spell_type spell, bool temp)
+string casting_uselessness_reason(spell_type spell, bool temp, bool *god_forbids)
 {
+    if (god_forbids)
+        *god_forbids = false;
     if (temp)
     {
         if (you.duration[DUR_CONF] > 0)
@@ -1220,6 +1221,16 @@ string casting_uselessness_reason(spell_type spell, bool temp)
 
         if (you.form == transformation::walking_scroll && spell_difficulty(spell) > 4)
             return "you cannot cast such powerful magic in your current form.";
+    }
+
+    // Your god won't let you cast spells they hate (evil/unclean/chaotic/hasty).
+    // Trog's blanket dislike of spellcasting is handled separately.
+    if (god_forbids_spell(spell, you.religion))
+    {
+        if (god_forbids)
+            *god_forbids = true;
+        return make_stringf("%s won't allow you to cast this spell.",
+                            uppercase_first(god_name(you.religion)).c_str());
     }
 
     // Check for banned schools (Currently just Ru sacrifices)
@@ -1624,7 +1635,7 @@ int spell_highlight_by_utility(spell_type spell, int default_colour,
                                bool transient, bool memcheck)
 {
     // If your god hates the spell, that overrides all other concerns.
-    if (god_hates_spell(spell, you.religion)
+    if (god_forbids_spell(spell, you.religion)
         || is_good_god(you.religion) && you.spellcasting_unholy())
     {
         return COL_FORBIDDEN;

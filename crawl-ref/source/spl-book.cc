@@ -33,6 +33,7 @@
 #include "prompt.h"
 #include "random-pick.h"
 #include "religion.h"
+#include "shopping.h"
 #include "spl-cast.h"
 #include "spl-summoning.h"
 #include "spl-util.h"
@@ -441,14 +442,18 @@ bool library_add_spells(vector<spell_type> spells, bool quiet)
                 you.hidden_spells.set(st, true);
         }
     }
-    if (!new_spells.empty() && !quiet)
+    if (!new_spells.empty())
     {
-        vector<string> spellnames(new_spells.size());
-        transform(new_spells.begin(), new_spells.end(), spellnames.begin(), spell_title);
-        mprf("You add the spell%s %s to your library.",
-             spellnames.size() > 1 ? "s" : "",
-             comma_separated_line(spellnames.begin(),
-                                  spellnames.end()).c_str());
+        if (!quiet)
+        {
+            vector<string> spellnames(new_spells.size());
+            transform(new_spells.begin(), new_spells.end(), spellnames.begin(), spell_title);
+            mprf("You add the spell%s %s to your library.",
+                spellnames.size() > 1 ? "s" : "",
+                comma_separated_line(spellnames.begin(),
+                                    spellnames.end()).c_str());
+        }
+        shopping_list.spells_added_to_library(new_spells, quiet);
     }
     return !new_spells.empty();
 }
@@ -934,9 +939,6 @@ public:
 
 static spell_type _choose_mem_spell(spell_list &spells)
 {
-    // If we've gotten this far, we know that at least one spell here is
-    // memorisable, which is enough.
-
     SpellLibraryMenu spell_menu(spells, SpellLibraryMenu::action::memorise);
 
     const vector<MenuEntry*> sel = spell_menu.show();
@@ -973,7 +975,9 @@ bool can_learn_spell(bool silent)
 
 bool learn_spell()
 {
-    spell_list spells(_get_spell_list());
+    // Include spells we can't currently memorise (e.g. all of them, while
+    // worshipping Trog) so the library can still be browsed and described.
+    spell_list spells(_get_spell_list(false, false));
     if (spells.empty())
         return false;
 
@@ -1094,9 +1098,6 @@ bool learn_spell(spell_type specspell, bool wizard, bool interactive)
 
     string mem_spell_warning_string = "";
 
-    if (!wizard)
-        mem_spell_warning_string = god_spell_warn_string(specspell, you.religion);
-
     if (interactive)
     {
         const string prompt = make_stringf(
@@ -1126,8 +1127,6 @@ bool learn_spell(spell_type specspell, bool wizard, bool interactive)
         if (!already_learning_spell(specspell))
             start_delay<MemoriseDelay>(spell_difficulty(specspell), specspell);
         you.turn_is_over = true;
-
-        did_god_conduct(DID_SPELL_MEMORISE, 2 + random2(5));
     }
 
     quiver::on_actions_changed();

@@ -499,10 +499,6 @@ static void _handle_hoarding()
  */
 void player_reacts_to_monsters()
 {
-    // In case Maurice managed to steal a needed item for example.
-    if (!you_are_delayed())
-        update_can_currently_train();
-
     check_monster_detect();
 
     if (have_passive(passive_t::detect_items) || you.has_mutation(MUT_JELLY_GROWTH)
@@ -982,12 +978,6 @@ static void _decrement_durations()
             make_stringf("You %s the barbed spikes from your body.",
                 you.berserk() ? "rip and tear" : "carefully extract").c_str());
     }
-
-    if (you.wearing_jewellery(AMU_WILDSHAPE))
-        did_god_conduct(DID_CHAOS, 1);
-
-    if (you.wearing_ego(OBJ_ARMOUR, SPARM_DEATH))
-        did_god_conduct(DID_EVIL, 1);
 
     if (!you.duration[DUR_ANCESTOR_DELAY]
         && have_passive(passive_t::frail)

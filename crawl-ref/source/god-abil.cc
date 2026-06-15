@@ -167,8 +167,7 @@ bool bless_weapon(god_type god, brand_type brand, colour_t colour)
 
     int item_slot = prompt_invent_item("Brand which weapon?",
                                        menu_type::invlist,
-                                       OSEL_BLESSABLE_WEAPON, OPER_ANY,
-                                       invprompt_flag::escape_only);
+                                       OSEL_BLESSABLE_WEAPON, OPER_ANY);
 
     if (item_slot == PROMPT_NOTHING || item_slot == PROMPT_ABORT)
     {
@@ -1946,7 +1945,7 @@ int slouch_damage_for_speed(int mon_speed, int mon_action_energy, int jerk_num,
     const int player_number = BASELINE_DELAY * BASELINE_DELAY * BASELINE_DELAY;
     return 4 * (mon_speed * BASELINE_DELAY * jerk_num
                            / mon_action_energy / jerk_denom
-                - player_number / player_movement_speed() / player_speed());
+                - player_number / player_overall_move_delay(BASELINE_DELAY));
 }
 
 int slouch_damage(monster *victim)
@@ -2239,7 +2238,7 @@ static map<curse_type, curse_data> _ashenzari_curses =
 static bool _can_use_curse(const curse_data& c)
 {
     for (skill_type sk : c.boosted)
-        if (you.can_currently_train[sk])
+        if (!is_useless_skill(sk))
             return true;
 
     return false;
@@ -2285,7 +2284,7 @@ string desc_curse_skills(const CrawlStoreValue& curse)
     vector<skill_type> trainable;
 
     for (skill_type sk : c.boosted)
-        if (you.can_currently_train[sk])
+        if (!is_useless_skill(sk))
             trainable.push_back(sk);
 
     return c.name + ": "
@@ -2394,8 +2393,7 @@ bool ashenzari_curse_item()
     const string prompt_msg = make_stringf("Curse which item? (Esc to abort)");
     const int item_slot = prompt_invent_item(prompt_msg.c_str(),
                                              menu_type::invlist,
-                                             OSEL_CURSABLE, OPER_ANY,
-                                             invprompt_flag::escape_only);
+                                             OSEL_CURSABLE, OPER_ANY);
     if (prompt_failed(item_slot))
         return false;
 
@@ -2428,8 +2426,7 @@ bool ashenzari_uncurse_item()
 {
     int item_slot = prompt_invent_item("Uncurse and destroy which item?",
                                        menu_type::invlist,
-                                       OSEL_CURSED_WORN, OPER_ANY,
-                                       invprompt_flag::escape_only);
+                                       OSEL_CURSED_WORN, OPER_ANY);
     if (prompt_failed(item_slot))
         return false;
 
@@ -2466,7 +2463,6 @@ bool ashenzari_uncurse_item()
         return false;
 
     mprf("You shatter the curse binding %s!", item.name(DESC_THE).c_str());
-    item_skills(item, you.skills_to_hide);
 
     for (item_def* _item : to_remove)
     {
@@ -5030,7 +5026,6 @@ static bool _execute_sacrifice(ability_type sac, const char* message)
 static void _ru_kill_skill(skill_type skill)
 {
     change_skill_points(skill, -you.skill_points[skill], true);
-    you.can_currently_train.set(skill, false);
     reset_training();
     check_selected_skills();
     update_four_winds(true);
@@ -5937,7 +5932,7 @@ spret uskayaw_grand_finale(bool fail)
             continue;
         }
 
-        if (!check_moveto(beam.target, "move", false))
+        if (!check_moveto(beam.target, "move", false, false))
         {
             // try again (messages handled by check_moveto)
         }
@@ -6200,7 +6195,7 @@ spret hepliaklqana_transference(bool fail)
     }
 
     const coord_def destination = ancestor->pos();
-    if (victim == &you && !check_moveto(destination, "transfer", false))
+    if (victim == &you && !check_moveto(destination, "transfer", false, false))
         return spret::abort;
 
     const bool uninhabitable = victim && !victim->is_habitable(destination);
@@ -6442,9 +6437,7 @@ bool wu_jian_do_wall_jump(coord_def targ)
     int wall_jump_modifier = (you.attribute[ATTR_SERPENTS_LASH] != 1) ? 2
                                                                       : 1;
 
-    you.time_taken = player_speed() * wall_jump_modifier
-                     * player_movement_speed();
-    you.time_taken = div_rand_round(you.time_taken, 10);
+    you.time_taken = player_overall_move_delay(wall_jump_modifier);
 
     // need to set this here in case serpent's lash isn't active
     you.turn_is_over = true;
@@ -6818,6 +6811,7 @@ void makhleb_setup_destruction_beam(bolt& beam, int power, bool signature_only)
         case BEAM_ELECTRICITY:
             beam.name = "torrent of electricity";
             beam.colour = LIGHTCYAN;
+            beam.tile_beam = TILE_BOLT_STRONG_ELEC;
             break;
 
         case BEAM_NEG:
@@ -6830,11 +6824,13 @@ void makhleb_setup_destruction_beam(bolt& beam, int power, bool signature_only)
         case BEAM_LAVA:
             beam.name = "gout of magma";
             beam.colour = RED;
+            beam.tile_beam = TILE_BOLT_MAGMA;
             break;
 
         case BEAM_ICE:
             beam.name = "flurry of ice";
             beam.colour = ETC_ICE;
+            beam.tile_beam = TILE_BOLT_ICEBLAST;
             break;
 
         case BEAM_DEVASTATION:

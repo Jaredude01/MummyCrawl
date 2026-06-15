@@ -109,7 +109,6 @@ static void _pruneify()
         return;
 
     mpr("The curse of the Prune overcomes you.");
-    did_god_conduct(DID_CHAOS, 10);
 }
 
 static void _moveto_maybe_repel_stairs()
@@ -384,15 +383,18 @@ bool check_moveto_exclusion(const coord_def& p, const string &move_verb,
  * Confirm that the player really does want to go to the indicated place.
  * May give many prompts, or no prompts if the move is safe.
  *
- * @param p          The location the player wants to go to
- * @param move_verb  The method of locomotion the player is using
- * @param physically Whether the player is considered to be "walking" for the
- *                   purposes of barbs causing damage and ice spells expiring
+ * @param p              The location the player wants to go to
+ * @param move_verb      The method of locomotion the player is using
+ * @param check_harmful  Whether to check if a generic move is harmful, as well
+ *                       as the specific destination.
+ * @param physically     Whether the player is considered to be "walking" for
+ *                       the purposes of barbs causing damage.
  * @return If true, continue with the move, otherwise cancel it
  */
-bool check_moveto(const coord_def& p, const string &move_verb, bool physically)
+bool check_moveto(const coord_def& p, const string &move_verb,
+                  bool check_harmful, bool physically)
 {
-    return !(physically && cancel_harmful_move(physically))
+    return !(check_harmful && cancel_harmful_move(physically))
            && check_moveto_terrain(p, move_verb, "")
            && check_moveto_cloud(p, move_verb)
            && check_moveto_trap(p, move_verb)
@@ -424,7 +426,11 @@ bool swap_check(monster* mons, coord_def &loc, bool quiet)
     loc = you.pos();
 
     if (you.cannot_move())
+    {
+        if (!quiet)
+            canned_msg(MSG_CANNOT_MOVE);
         return false;
+    }
 
     // Don't move onto dangerous terrain.
     if (is_feat_dangerous(env.grid(mons->pos())))
@@ -1088,15 +1094,12 @@ bool player_has_ears(bool temp)
 bool berserk_check_wielded_weapon()
 {
     const item_def * const wpn = you.weapon();
-    bool penance = false;
     if (wpn && wpn->defined()
         && (!is_melee_weapon(*wpn)
-            || needs_handle_warning(*wpn, OPER_ATTACK, penance)))
+            || needs_handle_warning(*wpn, OPER_ATTACK)))
     {
         string prompt = "Do you really want to go berserk while wielding "
                         + wpn->name(DESC_YOUR) + "?";
-        if (penance)
-            prompt += " This could place you under penance!";
 
         if (!yesno(prompt.c_str(), true, 'n'))
         {
@@ -1830,10 +1833,43 @@ int player_prot_life(bool allow_random, bool temp, bool items)
     return pl;
 }
 
+
+// The baseline time in auts it takes for the player to do an action.
+int player_speed(int scale)
+{
+    int ps = BASELINE_DELAY * scale;
+
+    // When paralysed, speed is irrelevant.
+    if (you.helpless())
+        return ps;
+
+    if (you.duration[DUR_SLOW] || have_stat_zero())
+        ps = haste_mul(ps);
+
+    if (you.duration[DUR_BERSERK] && !have_passive(passive_t::no_haste))
+        ps = berserk_div(ps);
+    else if (you.duration[DUR_HASTE])
+        ps = haste_div(ps);
+
+    if (you.form == transformation::statue || you.duration[DUR_PETRIFYING])
+    {
+        ps *= 15;
+        ps /= 10;
+    }
+
+    return ps;
+}
+
+// The time in auts that the player takes to move, ignoring their player_speed.
+//
+// Since player_speed is also in auts, the actual time to move is
+// player_speed() * player_movement_speed() / BASELINE_DELAY
+//
 // Even a slight speed advantage is very good... and we certainly don't
 // want to go past 6 (see below). -- bwr
-int player_movement_speed(bool check_terrain, bool temp)
+int player_movement_speed(bool check_terrain, bool temp, int scale)
 {
+    // Do initial whole-aut calculations unscaled for simplicity.
     int mv = get_form()->base_move_speed;
 
     if (check_terrain && feat_is_water(env.grid(you.pos())))
@@ -1858,15 +1894,21 @@ int player_movement_speed(bool check_terrain, bool temp)
 
     mv += you.wearing_ego(OBJ_ARMOUR, SPARM_PONDEROUSNESS);
 
-    // Cheibriados
-    if (have_passive(passive_t::slowed))
-        mv += 2 + min(div_rand_round(you.piety(), 20), 8);
-    else if (player_under_penance(GOD_CHEIBRIADOS))
-        mv += 2 + min(div_rand_round(you.piety_max[GOD_CHEIBRIADOS], 20), 8);
-
     // Mutations: -2, -3, -4, unless innate and shapechanged.
     if (int fast = you.get_mutation_level(MUT_FAST))
         mv -= fast + 1;
+
+    // Move to scaled calculation.
+    mv *= scale;
+
+    // Cheibriados
+    if (have_passive(passive_t::slowed) || player_under_penance(GOD_CHEIBRIADOS))
+    {
+        int piety = have_passive(passive_t::slowed)
+                        ? you.piety()
+                        : you.piety_max[GOD_CHEIBRIADOS];
+        mv += 2 * scale + min(div_rand_round(piety * scale, 20), 8 * scale);
+    }
 
     if (int slow = you.get_mutation_level(MUT_SLOW)
                    + you.has_mutation(MUT_FROG_LEGS)
@@ -1889,10 +1931,10 @@ int player_movement_speed(bool check_terrain, bool temp)
     {
         if (you.attribute[ATTR_SWIFTNESS] > 0)
           mv = div_rand_round(3*mv, 4);
-        else if (mv >= 8)
+        else if (mv >= 8 * scale)
           mv = div_rand_round(3*mv, 2);
-        else if (mv == 7)
-          mv = div_rand_round(7*6, 5); // balance for the cap at 6
+        else if (mv >= 7 * scale)
+          mv = div_rand_round(mv * 6, 5); // balance for the cap at 6
     }
 
     // We'll use the old value of six as a minimum, with haste this could
@@ -1901,38 +1943,37 @@ int player_movement_speed(bool check_terrain, bool temp)
     // which is a bit of a jump, and a bit too fast) -- bwr
     // Currently Haste takes 6 to 4, which is 2.5x as fast as delay 10
     // and still seems plenty fast. -- elliptic
-    if (mv < FASTEST_PLAYER_MOVE_SPEED)
-        mv = FASTEST_PLAYER_MOVE_SPEED;
+    if (mv < FASTEST_PLAYER_MOVE_SPEED * scale)
+        mv = FASTEST_PLAYER_MOVE_SPEED * scale;
 
     return mv;
 }
 
-// This function differs from the above in that it's used to set the
-// initial time_taken value for the turn. Everything else (movement,
-// spellcasting, combat) applies a ratio to this value.
-int player_speed()
+/**
+ * The time, in auts, for the player to take a single step.
+ *
+ * @param scale          The scale to apply.
+ * @param check_terrain  Whether to take into account terrain.
+ * @param temp           Whether to take into account temporarty effects.
+ * @param sampled        Whether to sample by randomly rounding. If false, will
+ *                       round to the nearest value (after scaling).
+ * @return               The time in auts for a movement step.
+ */
+int player_overall_move_delay(int scale, bool check_terrain,
+                              bool temp, bool sampled)
 {
-    int ps = 10;
-
-    // When paralysed, speed is irrelevant.
-    if (you.helpless())
-        return ps;
-
-    if (you.duration[DUR_SLOW] || have_stat_zero())
-        ps = haste_mul(ps);
-
-    if (you.duration[DUR_BERSERK] && !have_passive(passive_t::no_haste))
-        ps = berserk_div(ps);
-    else if (you.duration[DUR_HASTE])
-        ps = haste_div(ps);
-
-    if (you.form == transformation::statue || you.duration[DUR_PETRIFYING])
-    {
-        ps *= 15;
-        ps /= 10;
-    }
-
-    return ps;
+    // We use a scale of 60 because its many factors leads to exact calculation
+    // in many cases, e.g. when the player is hasted and so we will multiply by
+    // 2/3.
+    int delay_scale = 60;
+    int val = player_speed(delay_scale)
+              * player_movement_speed(check_terrain, temp, delay_scale)
+              * scale;
+    int overall_scale = BASELINE_DELAY * delay_scale * delay_scale;
+    if (sampled)
+        return div_rand_round(val, overall_scale);
+    else
+        return div_round_near(val, overall_scale);
 }
 
 bool is_effectively_light_armour(const item_def *item)
@@ -3442,7 +3483,7 @@ static void _display_char_status(int value, const char *fmt, ...)
 
 static void _display_movement_speed()
 {
-    const int move_cost = (player_speed() * player_movement_speed()) / 10;
+    const int move_cost = player_overall_move_delay(1, true, true, false);
 
     const bool water  = you.in_liquid();
     const bool swim   = you.swimming();
@@ -4618,12 +4659,7 @@ void handle_player_poison(int delay)
 
     const int decrease = you.duration[DUR_POISONING] - (int) new_dur;
 
-    // Transforming into a form with no metabolism merely suspends the poison
-    // but doesn't let your body get rid of it.
-    if (you.is_nonliving() || you.is_lifeless_undead())
-        return;
-
-    // Other sources of immunity (Zin, staff of Olgreb) let poison dissipate.
+    // Poison immunity means poison does no damage but dissipates.
     bool do_dmg = (player_res_poison() >= 3 ? false : true);
 
     int dmg = (you.duration[DUR_POISONING] / 1000)
@@ -5673,7 +5709,6 @@ void player::init_skills()
     train.init(TRAINING_DISABLED);
     train_alt.init(TRAINING_DISABLED);
     training.init(0);
-    can_currently_train.reset();
     skill_points.init(0);
     skill_order.init(MAX_SKILL_ORDER);
     skill_manual_points.init(0);
@@ -6205,7 +6240,7 @@ int player::skill(skill_type sk, int scale, bool real, bool temp) const
     // SkillMenuSwitch::get_help() to reflect that
 
     // wizard racechange, or upgraded old save
-    if (is_useless_skill(sk))
+    if (is_useless_skill(sk, false))
         return 0;
 
     // skills[sk] might not be updated yet if this is in the middle of
@@ -7258,10 +7293,9 @@ bool player::spellcasting_unholy() const
  */
 undead_state_type player::undead_state(bool temp) const
 {
-    if (temp && form == transformation::death)
-        return US_UNDEAD;
-    else if (temp && (form == transformation::vampire || form == transformation::bat_swarm))
-        return US_SEMI_UNDEAD;
+    undead_state_type form_state = get_form()->undead_state;
+    if (temp && form_state != US_ALIVE)
+        return form_state;
     return species::undead_type(species);
 }
 
