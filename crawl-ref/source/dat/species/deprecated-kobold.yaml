@@ -1,7 +1,8 @@
+TAG_MAJOR_VERSION: 34
 enum: SP_KOBOLD
 monster: MONS_KOBOLD
 name: Kobold
-difficulty: Intermediate
+difficulty: False
 difficulty_priority: 80
 aptitudes:
   xp: 1
@@ -33,13 +34,6 @@ levelup_stat_frequency: 5
 mutations:
   1:
     MUT_NIGHTSTALKER: 3
-recommended_jobs:
-  - brigand
-  - berserker
-  - hexslinger
-  - enchanter
-  - conjurer
-  - earth elementalist
 recommended_weapons:
   - short blades
   - maces and flails

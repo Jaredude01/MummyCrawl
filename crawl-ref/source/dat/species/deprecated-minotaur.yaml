@@ -1,7 +1,8 @@
+TAG_MAJOR_VERSION: 34
 enum: SP_MINOTAUR
 monster: MONS_MINOTAUR
 name: Minotaur
-difficulty: Simple
+difficulty: False
 difficulty_priority: 90
 aptitudes:
   xp: -1
@@ -47,12 +48,5 @@ mutations:
   1:
     MUT_HORNS: 2
     MUT_REFLEXIVE_HEADBUTT: 1
-recommended_jobs:
-  - fighter
-  - gladiator
-  - monk
-  - hunter
-  - berserker
-
 child_name: Calf
 orc_name: Minotorc

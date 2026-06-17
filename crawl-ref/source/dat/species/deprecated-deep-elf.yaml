@@ -1,10 +1,11 @@
+TAG_MAJOR_VERSION: 34
 enum: SP_DEEP_ELF
 monster: MONS_ELF
 name: Deep Elf
 short_name: DE
 adjective: Elven
 genus: Elf
-difficulty: Simple
+difficulty: False
 difficulty_priority: 30
 aptitudes:
   xp: -1
@@ -46,17 +47,6 @@ levelup_stats:
 mutations:
   1:
     MUT_MANA_REGENERATION: 1
-recommended_jobs:
-  - hedge wizard
-  - conjurer
-  - summoner
-  - forgewright
-  - necromancer
-  - fire elementalist
-  - ice elementalist
-  - air elementalist
-  - earth elementalist
-  - alchemist
 recommended_weapons:
   - short blades
   - staves

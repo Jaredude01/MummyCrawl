@@ -1,7 +1,8 @@
+TAG_MAJOR_VERSION: 34
 enum: SP_GNOLL
 monster: MONS_GNOLL
 name: Gnoll
-difficulty: Simple
+difficulty: False
 difficulty_priority: 100
 aptitudes:
   xp: 0
@@ -46,14 +47,7 @@ mutations:
     MUT_TREASURE_SENSE: 1
     MUT_FANGS: 1
     MUT_DISTRIBUTED_TRAINING: 1
-recommended_jobs:
-  - cinder acolyte
-  - reaver
-  - warper
-  - hexslinger
-  - shapeshifter
-  - wanderer
-  - forgewright
+
 
 child_name: Pup
 orc_name: Hyenorc

@@ -1,9 +1,10 @@
+TAG_MAJOR_VERSION: 34
 enum: SP_BARACHI
 monster: MONS_BARACHI
 name: Barachi
 adjective: Barachian
 genus: Frog
-difficulty: Simple
+difficulty: False
 difficulty_priority: 25
 species_flags:
   - no_hair
@@ -47,16 +48,6 @@ mutations:
     MUT_DAYSTALKER: 1
   13:
     MUT_FROG_LEGS: 1
-recommended_jobs:
-  - fighter
-  - berserker
-  - warper
-  - hexslinger
-  - summoner
-  - ice elementalist
-  - reaver
-  - forgewright
-
 walking_verb: Hop
 child_name: Tadpole
 orc_name: Orcphibian

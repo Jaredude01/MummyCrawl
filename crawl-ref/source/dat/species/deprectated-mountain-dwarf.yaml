@@ -1,10 +1,11 @@
+TAG_MAJOR_VERSION: 34
 enum: SP_MOUNTAIN_DWARF
 monster: MONS_DWARF
 name: Mountain Dwarf
 short_name: MD
 adjective: Dwarven
 genus: Dwarf
-difficulty: Simple
+difficulty: False
 difficulty_priority: 60
 aptitudes:
   xp: -1
@@ -49,14 +50,7 @@ mutations:
   1:
     MUT_ARTEFACT_ENCHANTING: 1
     MUT_RUNIC_MAGIC: 1
-recommended_jobs:
-  - fighter
-  - monk
-  - berserker
-  - cinder acolyte
-  - reaver
-  - fire elementalist
-  - forgewright
+
 recommended_weapons:
   - maces and flails
   - axes

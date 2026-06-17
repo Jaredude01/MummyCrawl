@@ -1,10 +1,11 @@
+TAG_MAJOR_VERSION: 34
 enum: SP_GALE_CENTAUR
 monster: MONS_CENTAUR
 name: Gale Centaur
 short_name: GC
 adjective: Equine
 genus: Centaur
-difficulty: Advanced
+difficulty: False
 difficulty_priority: 200
 species_flags:
   - small_torso
@@ -52,13 +53,7 @@ mutations:
     MUT_HOOVES: 3
   5:
     MUT_STAMPEDE: 1
-recommended_jobs:
-  - gladiator
-  - brigand
-  - hunter
-  - conjurer
-  - air elementalist
-  - fire elementalist
+
 
 walking_verb: Trott
 child_name: Foal

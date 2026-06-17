@@ -88,10 +88,20 @@ Mountain Dwarf
 Mountain Dwarves are strong melee fighters and capable heavy-armoured casters.
 They can use scrolls to enchant even some artefacts.
 %%%%
+Lesser Mummy
+
+Lesser Mummies stumble out of ossuaries from time to time. They are mostly bad
+at everything they try to do
+%%%%
 Mummy
 
-Compelled to walk by an ancient curse, Mummies have innate faith and are adept
-at Necromancy, but learn other skills very slowly. They cannot drink potions.
+Mummies retain their entitlement from their lives as pharaohs, they will not 
+use any equipment that is not an artifact. They cannot drink potions.
+%%%%
+Greater Mummy
+
+Blessed by Horus himself, Greater Mummies enter the dungeon to assert their divine
+power over all other creatures. They can drink potions.
 %%%%
 Naga
 

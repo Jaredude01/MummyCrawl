@@ -1,10 +1,11 @@
+TAG_MAJOR_VERSION: 34
 enum: SP_OCTOPODE
 monster: MONS_OCTOPODE
 name: Octopode
 short_name: Op
 adjective: Octopoid
 genus: Octopus
-difficulty: Advanced
+difficulty: False
 difficulty_priority: 50
 species_flags:
   - no_hair
@@ -37,14 +38,6 @@ mutations:
 fake_mutations:
   - long: You cannot wear most types of armour.
     short: almost no armour
-recommended_jobs:
-  - shapeshifter
-  - hedge wizard
-  - conjurer
-  - brigand
-  - fire elementalist
-  - earth elementalist
-  - alchemist
 
 walking_verb: Wriggl
 altar_action: curl up in front of

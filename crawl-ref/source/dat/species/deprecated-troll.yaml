@@ -1,8 +1,9 @@
+TAG_MAJOR_VERSION: 34
 enum: SP_TROLL
 monster: MONS_TROLL
 name: Troll
 adjective: Trollish
-difficulty: Simple
+difficulty: False
 difficulty_priority: 40
 aptitudes:
   xp: -1
@@ -50,13 +51,6 @@ mutations:
     MUT_REGENERATION: 1
     MUT_CLAWS: 3
     MUT_SHAGGY_FUR: 1
-recommended_jobs:
-  - fighter
-  - gladiator
-  - berserker
-  - warper
-  - earth elementalist
-  - hedge wizard
 recommended_weapons:
   - maces and flails
   - unarmed combat

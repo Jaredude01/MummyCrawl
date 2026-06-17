@@ -1,7 +1,8 @@
+TAG_MAJOR_VERSION: 34
 enum: SP_SPRIGGAN
 monster: MONS_SPRIGGAN
 name: Spriggan
-difficulty: Intermediate
+difficulty: False
 difficulty_priority: 50
 aptitudes:
   xp: -1
@@ -46,14 +47,6 @@ mutations:
   1:
     MUT_FAST: 3
     MUT_ACUTE_VISION: 1
-recommended_jobs:
-  - brigand
-  - artificer
-  - warper
-  - enchanter
-  - conjurer
-  - earth elementalist
-  - alchemist
 recommended_weapons:
   - short blades
 

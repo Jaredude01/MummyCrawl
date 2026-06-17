@@ -1,8 +1,9 @@
+TAG_MAJOR_VERSION: 34
 enum: SP_GARGOYLE
 monster: MONS_GARGOYLE
 name: Gargoyle
 short_name: Gr
-difficulty: Simple
+difficulty: False
 difficulty_priority: 70
 species_flags:
   - no_hair
@@ -53,14 +54,7 @@ mutations:
 fake_mutations:
   - long: You are immune to sickness and miasma.
     short: sickness immunity
-recommended_jobs:
-  - fighter
-  - gladiator
-  - monk
-  - berserker
-  - fire elementalist
-  - earth elementalist
-  - reaver
+
 recommended_weapons:
   - maces and flails
   - staves

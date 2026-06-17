@@ -18,12 +18,7 @@ equipment:
   - "robe"
   - "potion of magic"
 recommended_species:
-  - deep elf
-  - djinni
-  - mountain dwarf
-  - demonspawn
   - mummy
-  - revenant
 skills:
   dodging: 2
   stealth: 2

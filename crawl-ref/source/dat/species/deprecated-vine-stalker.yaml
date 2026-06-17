@@ -1,8 +1,9 @@
+TAG_MAJOR_VERSION: 34
 enum: SP_VINE_STALKER
 monster: MONS_VINE_STALKER
 name: Vine Stalker
 short_name: VS
-difficulty: Advanced
+difficulty: False
 difficulty_priority: 90
 species_flags:
   - no_ears
@@ -42,14 +43,7 @@ mutations:
     MUT_REGENERATION: 1
   8:
     MUT_FANGS: 1
-recommended_jobs:
-  - fighter
-  - brigand
-  - berserker
-  - enchanter
-  - conjurer
-  - necromancer
-  - ice elementalist
+
 recommended_weapons:
   - maces and flails
   - axes

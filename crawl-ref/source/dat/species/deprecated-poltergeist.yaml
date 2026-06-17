@@ -1,10 +1,11 @@
+TAG_MAJOR_VERSION: 34
 enum: SP_POLTERGEIST
 monster: MONS_POLTERGEIST
 name: Poltergeist
 genus: Geist
 adjective: Ghostly
 short_name: Po
-difficulty: Advanced
+difficulty: False
 difficulty_priority: 80
 species_flags:
   - no_blood
@@ -65,14 +66,6 @@ mutations:
 fake_mutations:
   - long: You are insubstantial and cannot be petrified, ensnared, or set on fire.
     short: insubstantial
-recommended_jobs:
-  - chaos knight
-  - enchanter
-  - hexslinger
-  - necromancer
-  - earth elementalist
-  - ice elementalist
-  - alchemist
 recommended_weapons:
   - short blades
   - axes

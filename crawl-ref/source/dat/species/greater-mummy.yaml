@@ -1,8 +1,8 @@
-enum: SP_MUMMY
+enum: SP_GREATER_MUMMY
 monster: MONS_MUMMY
-name: Mummy
-difficulty: Intermediate
-difficulty_priority: 10
+name: Greater Mummy
+difficulty: Simple
+difficulty_priority: 90
 species_flags:
   - no_blood
 aptitudes:
@@ -38,42 +38,30 @@ aptitudes:
   necromancy: 20
   alchemy: -2
   invocations: -2
-  evocations: -2
+  evocations: 20
 undead_type: undead
 str: 28
-int: 18
-dex: 10
-levelup_stat_frequency: 5
+int: 28
+dex: 28
+levelup_stat_frequency: 1
 mutations:
   1:
     MUT_NEGATIVE_ENERGY_RESISTANCE: 3
+    MUT_COLD_RESISTANCE: 1
     MUT_TORMENT_RESISTANCE: 2
-    MUT_NO_DRINK: 1
     MUT_FAITH: 1
     MUT_NECRO_ENHANCER: 1
-    MUT_LUCKY: 1
+    MUT_LUCKY: 2
     MUT_CLARITY: 1
-    MUT_WILD_MAGIC: 1
-    MUT_POWERED_BY_DEATH: 1
+    MUT_WILD_MAGIC: 3
+    MUT_POWERED_BY_DEATH: 3
     MUT_ROYAL_TASTES: 1
   7:
-    MUT_POWERED_BY_DEATH: 1
-    MUT_WILD_MAGIC: 1
+    MUT_TREASURE_SENSE: 1
   13:
     MUT_NECRO_ENHANCER: 1
-  18:
-    MUT_WILD_MAGIC: 1
-  21:
-    MUT_POWERED_BY_DEATH: 1
-  27:
-    MUT_LUCKY: 1
 recommended_jobs:
-  - cinder acolyte
-  - hedge wizard
-  - conjurer
   - necromancer
-  - ice elementalist
-  - summoner
 
 orc_name: Orcish Mummy
 orcification_msg: A small pair of tusks begins to pierce through your wrappings.

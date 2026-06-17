@@ -1,7 +1,8 @@
+TAG_MAJOR_VERSION: 34
 enum: SP_TENGU
 monster: MONS_TENGU
 name: Tengu
-difficulty: Intermediate
+difficulty: False
 difficulty_priority: 15
 species_flags:
   - no_hair
@@ -47,14 +48,7 @@ mutations:
     MUT_ACROBATIC: 1
   7:
     MUT_TENGU_FLIGHT: 1
-recommended_jobs:
-  - berserker
-  - reaver
-  - hedge wizard
-  - conjurer
-  - summoner
-  - fire elementalist
-  - air elementalist
+
 recommended_weapons:
   - maces and flails
   - axes

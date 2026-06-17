@@ -1,8 +1,9 @@
+TAG_MAJOR_VERSION: 34
 enum: SP_ONI
 monster: MONS_ONI
 name: Oni
 adjective: Oni
-difficulty: Intermediate
+difficulty: False
 difficulty_priority: 65
 aptitudes:
   xp: 0
@@ -46,13 +47,6 @@ mutations:
     MUT_HORNS: 1
     MUT_DOUBLE_POTION_HEAL: 1
     MUT_DRUNKEN_BRAWLING: 1
-recommended_jobs:
-  - gladiator
-  - berserker
-  - cinder acolyte
-  - hedge wizard
-  - air elementalist
-  - fire elementalist
 recommended_weapons:
   - maces and flails
   - polearms

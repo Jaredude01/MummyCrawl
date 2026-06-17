@@ -1,9 +1,10 @@
+TAG_MAJOR_VERSION: 34
 enum: SP_FELID
 monster: MONS_FELID
 name: Felid
 adjective: Feline
 genus: Cat
-difficulty: Advanced
+difficulty: False
 difficulty_priority: 40
 species_flags:
   - no_feet
@@ -58,14 +59,7 @@ mutations:
     MUT_SHAGGY_FUR: 1
   12:
     MUT_SHAGGY_FUR: 1
-recommended_jobs:
-  - berserker
-  - enchanter
-  - shapeshifter
-  - ice elementalist
-  - air elementalist
-  - conjurer
-  - summoner
+
 recommended_weapons:
   - unarmed combat
 

@@ -1,9 +1,10 @@
+TAG_MAJOR_VERSION: 34
 enum: SP_COGLIN
 monster: MONS_GOBLIN
 name: Coglin
 short_name: Co
 genus: Goblin
-difficulty: Intermediate
+difficulty: False
 difficulty_priority: 10
 aptitudes:
   xp: 0
@@ -45,13 +46,5 @@ mutations:
     MUT_SLOW_WIELD: 1
     MUT_WARMUP_STRIKES: 1
     MUT_NO_JEWELLERY: 1
-recommended_jobs:
-  - artificer
-  - hunter
-  - gladiator
-  - warper
-  - berserker
-  - alchemist
-  - forgewright
 
 orc_name: Exo-Orc

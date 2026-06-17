@@ -1,9 +1,10 @@
+TAG_MAJOR_VERSION: 34
 enum: SP_DEMONSPAWN
 monster: MONS_DEMONSPAWN
 name: Demonspawn
 short_name: Ds
 adjective: Demonic
-difficulty: Intermediate
+difficulty: False
 difficulty_priority: 80
 aptitudes:
   xp: -1
@@ -36,13 +37,5 @@ str: 8
 int: 8
 dex: 8
 levelup_stat_frequency: 4
-recommended_jobs:
-  - gladiator
-  - berserker
-  - hedge wizard
-  - necromancer
-  - fire elementalist
-  - ice elementalist
-  - alchemist
 
 orc_name: Demon Orc

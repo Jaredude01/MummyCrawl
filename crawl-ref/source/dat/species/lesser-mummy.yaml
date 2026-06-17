@@ -1,32 +1,31 @@
-enum: SP_MUMMY
+enum: SP_LESSER_MUMMY
 monster: MONS_MUMMY
-name: Mummy
-difficulty: Intermediate
-difficulty_priority: 10
+name: Lesser Mummy
+difficulty: Advanced
+difficulty_priority: 20
 species_flags:
   - no_blood
 aptitudes:
-  xp: 5
-  hp: 5
+  xp: -1
+  hp: 0
   mp_mod: 0
   wl: 5
-  fighting: 20
   short_blades: -2
   long_blades: -2
   axes: -2
   maces_and_flails: -2
-  polearms: 20
-  staves: 20
+  polearms: -2
+  staves: -2
   ranged weapons: -2
   throwing: -2
-  armour: 20
-  dodging: 20
-  stealth: 20
-  shields: 20
+  armour: -2
+  dodging: -2
+  stealth: -1
+  shields: -2
   unarmed_combat: -2
-  spellcasting: 20
+  spellcasting: 2
   conjurations: -2
-  hexes: -2
+  hexes: -1
   summoning: -2
   forgecraft: -2
   translocations: -2
@@ -35,38 +34,26 @@ aptitudes:
   ice_magic: -2
   air_magic: -2
   earth_magic: -2
-  necromancy: 20
   alchemy: -2
-  invocations: -2
+  invocations: -1
   evocations: -2
 undead_type: undead
-str: 28
-int: 18
-dex: 10
+str: 11
+int: 7
+dex: 7
 levelup_stat_frequency: 5
 mutations:
   1:
     MUT_NEGATIVE_ENERGY_RESISTANCE: 3
+    MUT_COLD_RESISTANCE: 1
     MUT_TORMENT_RESISTANCE: 2
     MUT_NO_DRINK: 1
+    MUT_HEAT_VULNERABILITY: 1
     MUT_FAITH: 1
     MUT_NECRO_ENHANCER: 1
-    MUT_LUCKY: 1
-    MUT_CLARITY: 1
-    MUT_WILD_MAGIC: 1
-    MUT_POWERED_BY_DEATH: 1
-    MUT_ROYAL_TASTES: 1
-  7:
-    MUT_POWERED_BY_DEATH: 1
-    MUT_WILD_MAGIC: 1
+    MUT_ACCURSED: 1
   13:
     MUT_NECRO_ENHANCER: 1
-  18:
-    MUT_WILD_MAGIC: 1
-  21:
-    MUT_POWERED_BY_DEATH: 1
-  27:
-    MUT_LUCKY: 1
 recommended_jobs:
   - cinder acolyte
   - hedge wizard
