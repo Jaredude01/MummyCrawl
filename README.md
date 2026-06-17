@@ -2,7 +2,7 @@
 
 # Mummy Crawl Stone Soup
 
-Mummy Crawl Stone Soup is a game of dungeon exploration, combat and magic, involving mummies of necromantic skills, worshipping Kiku of great power and caprice. To win, you'll need to be kind of good at tactics and strategy, and prevail against overwhelming odds.
+Mummy Crawl Stone Soup is a game of dungeon exploration, combat and magic, involving mummies of necromantic skills, and worshipping Kiku. To win, you'll need to be kind of good at tactics and strategy, and prevail against whelming odds.
 
 After killing many mummy characters I modified the mummy species for some cathartic dungeonblasting.
 Those modifications led me to trying different things to familiarize myself with how crawl works so I can contribute at some point in the future.
