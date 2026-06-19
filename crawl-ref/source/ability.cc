@@ -346,6 +346,8 @@ static vector<ability_def> &_get_ability_list()
         { ABIL_SPIT_POISON, "Spit Poison",
             0, 0, 0, 5, {fail_basis::xl, 20, 1},
             abflag::breath | abflag::dir_or_target | abflag::not_self },
+        { ABIL_MEGAWAIT, "Wait an aeon",
+			0, 0, 0, -1, {}, abflag::none },
         { ABIL_GOLDEN_BREATH, "Golden Breath",
             0, 0, 0, 5, {}, abflag::drac_charges },
         { ABIL_COMBUSTION_BREATH, "Combustion Breath",
@@ -3312,6 +3314,11 @@ static spret _do_ability(const ability_def& abil, bool fail, dist *target,
         }
         break;
     }
+    
+    case ABIL_MEGAWAIT:
+    {
+		wizard_recreate_level(); break;
+	}
 
     case ABIL_IMBUE_SERVITOR:
         return imbue_servitor();
@@ -4368,6 +4375,8 @@ bool player_has_ability(ability_type abil, bool include_unusable)
         return you.get_mutation_level(MUT_SPIT_POISON) >= 2;
     case ABIL_SPIT_POISON:
         return you.get_mutation_level(MUT_SPIT_POISON) == 1;
+    case ABIL_MEGAWAIT:
+		return you.get_mutation_level(MUT_PATIENCE);
     case ABIL_GOLDEN_BREATH:
         return you.form == transformation::dragon
                && !species::is_draconian(you.species);
@@ -4457,6 +4466,7 @@ vector<talent> your_talents(bool include_unusable, bool ignore_piety)
             ABIL_SHAFT_SELF,
             ABIL_HOP,
             ABIL_SPIT_POISON,
+            ABIL_MEGAWAIT,
             ABIL_GOLDEN_BREATH,
             ABIL_COMBUSTION_BREATH,
             ABIL_GLACIAL_BREATH,

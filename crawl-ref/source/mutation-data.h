@@ -2640,6 +2640,16 @@ static const mutation_def mut_data[] =
   TILEG_MUT_MARK_OF_THE_FANATIC,
 },
 
+{ MUT_PATIENCE, 0, 1, mutflag::good,
+  "Patience",
+  
+  {"You can spend 5000 turns to regenerate the floor.", "", ""},
+  {"You take a look at the zot clock and get an idea.", "", ""},
+  {"", "", ""},
+  
+  TILEG_MUT_MARK_OF_THE_FANATIC,
+},
+
 // Dummy entry for removed mutations.
 // XXX: Must be last!
 { MUT_REMOVED_MUTATION, 0, 0, mutflag::good, "Removed Mutation",

@@ -34,7 +34,7 @@ const Branch branches[NUM_BRANCHES] =
       'T', {}, branch_noise::normal, DEFAULT_MON_DIE_SIZE,
       {} },
 
-    { BRANCH_ORC, BRANCH_DUNGEON, 9, 12, 2, 10,
+    { BRANCH_ORC, BRANCH_DUNGEON, 9, 12, 4, 10,
       brflag::spotty,
       DNGN_ENTER_ORC, DNGN_EXIT_ORC, NUM_FEATURES,
       "Orcish Mines", "the Orcish Mines", "Orc",
@@ -63,7 +63,7 @@ const Branch branches[NUM_BRANCHES] =
       {}},
 #endif
 
-    { BRANCH_LAIR, BRANCH_DUNGEON, 8, 11, 5, 10,
+    { BRANCH_LAIR, BRANCH_DUNGEON, 4, 7, 4, 10,
       brflag::none,
       DNGN_ENTER_LAIR, DNGN_EXIT_LAIR, NUM_FEATURES,
       "Lair", "the Lair of Beasts", "Lair",
@@ -156,7 +156,7 @@ const Branch branches[NUM_BRANCHES] =
       {} },
 #if TAG_MAJOR_VERSION > 34
 
-    { BRANCH_DEPTHS, BRANCH_DUNGEON, 15, 15, 4, 22,
+    { BRANCH_DEPTHS, BRANCH_DUNGEON, 10, 10, 4, 22,
       brflag::none,
       DNGN_ENTER_DEPTHS, DNGN_EXIT_DEPTHS, NUM_FEATURES,
       "Depths", "the Depths", "Depths",
