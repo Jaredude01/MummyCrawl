@@ -2,20 +2,24 @@
 
 # Mummy Crawl Stone Soup
 
-Mummy Crawl Stone Soup is a game of dungeon exploration, combat and magic, involving mummies of necromantic skills, worshipping Kiku of great power and caprice. To win, you'll need to be kind of good at tactics and strategy, and prevail against overwhelming odds.
+Mummy Crawl Stone Soup is a game of dungeon exploration, combat and magic, involving mummies of necromantic skills, and worshipping Kiku. To win, you'll need to be kind of good at tactics and strategy, and prevail against whelming odds.
 
 After killing many mummy characters I modified the mummy species for some cathartic dungeonblasting.
 Those modifications led me to trying different things to familiarize myself with how crawl works so I can contribute at some point in the future.
 
 ## Changes from dungeon crawl
 * Necromancer starts with Kiku and all the of the necromancy spells I care about.
-* Modified the Lucky mutation to give a 2/3 chance of changing items into artifacts.
+* Modified the Lucky mutation to give 1/3 chance of changing items into artifacts at level 1 and 2/3 at level 2.
 * Created Royal Tastes mutation to only allow equipping artifacts.
-* Gave the mummy great aptitudes and mutations while I'm testing stuff, I expect I'll probably tone that down at some point
+* Gave the mummy great aptitudes and mutations while I'm testing stuff, I expect I'll probably tone that down at some point.
+* Removed all species except Mummy.
+* Created Lesser Mummy which is the same as regular DCSS Mummy.
+* Created Greater Mummy for overpowered romps.
 
 ## Planned Changes
-* Mummy and Necromancer are the only selectable species and class.
 * Tomb replaces the dungeon exit and you must bring the orb of zot to a special Kiku altar inside to beat the game.
+* Create some sort of system to give mummies the mutations of other species as the game progresses.
+* Maybe give mummies inherent Wu Jian movement.
 
 ## License and history information
 
