@@ -859,7 +859,7 @@ bool lost_soul_revive(monster& mons, killer_type killer)
         }
 
         targeter_radius hitfunc(*mi, LOS_SOLID);
-        flash_view_delay(UA_MONSTER, GREEN, 200, &hitfunc);
+        flash_view_delay(UA_MONSTER, GREEN, 200, 75, &hitfunc);
 
         mons.heal(mons.max_hit_points);
         mons.timeout_enchantments();
@@ -1347,10 +1347,11 @@ bool egg_is_incubating(const monster& egg)
 
     // Finally, check that there are foes sufficiently nearby (and in the
     // parent's LoS)
-    for (monster_near_iterator mi(parent, LOS_NO_TRANS); mi; ++mi)
+    for (monster_near_iterator mi(parent->pos(), LOS_NO_TRANS); mi; ++mi)
     {
         if (!mons_aligned(*mi, &egg) && !mi->is_firewood()
-            && grid_distance(egg.pos(), mi->pos()) <= 4)
+            && grid_distance(egg.pos(), mi->pos()) <= 4
+            && egg.can_see(**mi))
         {
             return true;
         }

@@ -28,7 +28,7 @@ public:
 class monster_view_annotator
 {
 public:
-    monster_view_annotator(vector<monster *> *monsters);
+    monster_view_annotator(vector<coord_def> *pos);
     virtual ~monster_view_annotator();
 };
 
@@ -345,6 +345,7 @@ public:
 // Monster equipment description level.
 enum mons_equip_desc_level_type
 {
+    DESC_NO_EQUIPMENT,
     DESC_WEAPON,
     DESC_NOTEWORTHY,
     DESC_NOTEWORTHY_AND_WEAPON,
@@ -382,6 +383,7 @@ string feature_description(dungeon_feature_type grid,
 
 vector<dungeon_feature_type> features_by_desc(const base_pattern &pattern);
 
+bool is_terrain_interesting(dungeon_feature_type feat);
 void full_describe_view();
 void do_look_around(const coord_def &whence = coord_def(0, 0));
 bool get_look_position(coord_def *c);

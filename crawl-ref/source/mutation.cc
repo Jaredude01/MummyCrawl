@@ -1267,9 +1267,8 @@ static bool _accept_mutation(mutation_type mutat, bool temp, bool catalyst)
     // Catalyst mutations avoid the boring pure stat mutation trio, and also
     // try to avoid providing any auxes that could disable equipment.
     if (catalyst
-        && (mutat == MUT_HORNS || mutat == MUT_ANTENNAE
-            || mutat == MUT_CLAWS || mutat == MUT_HOOVES || mutat == MUT_TALONS
-            || mutat == MUT_STRONG || mutat == MUT_CLEVER || mutat == MUT_AGILE))
+        && (is_body_facet(mutat) || mutat == MUT_STRONG
+            || mutat == MUT_CLEVER || mutat == MUT_AGILE))
     {
         return false;
     }
@@ -1395,11 +1394,15 @@ int mut_check_conflict(mutation_type mut, bool innate_only)
 
 static void _maybe_remove_equipment(mutation_type mut)
 {
-    vector<item_def*> to_remove = you.equipment.get_forced_removal_list();
+    size_t num_direct;
+    vector<item_def*> to_remove =
+        you.equipment.get_forced_removal_list(false, false, &num_direct);
 
-    for (item_def* item : to_remove)
+    for (size_t i = 0; i < to_remove.size(); ++i)
     {
-        if (mut == MUT_MISSING_HAND)
+        item_def* item = to_remove[i];
+
+        if (mut == MUT_MISSING_HAND && i < num_direct)
         {
             mprf("You can no longer %s %s!",
                     item->base_type == OBJ_JEWELLERY ? "wear" : "hold",
@@ -2058,8 +2061,7 @@ bool mutate(mutation_type which_mutation, const string &reason, bool failMsg,
             break;
 
         case MUT_ACUTE_VISION:
-            // We might have to turn autopickup back on again.
-            autotoggle_autopickup(false);
+            env.invis_knowledge.clear();
             break;
 
         case MUT_NIGHTSTALKER:
@@ -2675,13 +2677,13 @@ mutation_type mutation_from_name(string name, bool allow_category, vector<mutati
  * @return      The mutation's description, helpfully trimmed.
  *              e.g. "you are frail (-10% HP)".
  */
-string mut_upgrade_summary(mutation_type mut)
+string innate_mut_upgrade_summary(mutation_type mut)
 {
     if (!_is_valid_mutation(mut))
         return "";
 
     string mut_desc =
-        lowercase_first(mutation_desc(mut, you.mutation[mut] + 1));
+        lowercase_first(mutation_desc(mut, you.innate_mutation[mut] + 1));
     strip_suffix(mut_desc, ".");
     return mut_desc;
 }
@@ -3326,7 +3328,7 @@ void check_monster_detect()
         // forth, since every time it leaves LOS of the mimic, the
         // mimic is forgotten (replaced by MONS_SENSED).
         // XXX: since mimics were changed, is this safe to remove now?
-        const monster_type remembered_monster = cell.monster();
+        const monster_type remembered_monster = cell.mon_type();
         if (remembered_monster == mon->type)
             continue;
 

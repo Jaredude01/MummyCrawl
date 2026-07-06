@@ -470,6 +470,8 @@ public:
     int prevailing_wind;
     bool gave_wind_change_warning;
 
+    bool gave_invis_clear_prompt;
+
     // ---------------------------
     // Volatile (same-turn) state:
     // ---------------------------
@@ -519,6 +521,7 @@ public:
     bool redraw_status_lights;
 
     colour_t flash_colour;
+    int flash_alpha;
     targeter *flash_where;
 
     int time_taken;
@@ -621,6 +624,7 @@ public:
     bool innate_sinv() const;
     bool visible_to(const actor *looker) const override;
     bool can_see(const actor& a) const override;
+    bool aware_of(const actor& a) const override;
     undead_state_type undead_state(bool include_temp = true) const;
     bool nightvision() const override;
     bool may_pruneify() const;
@@ -1095,8 +1099,14 @@ public:
 
 bool check_moveto(const coord_def& p, const string &move_verb = "step",
                   bool check_harmful = true, bool physically = true);
+bool check_terrain_warnings(const vector<coord_def> &areas,
+                            const string &move_verb,
+                            const string &msg = "", bool *prompted = nullptr);
 bool check_moveto_terrain(const coord_def& p, const string &move_verb,
                           const string &msg = "", bool *prompted = nullptr);
+bool check_moveto_cloud(const vector<coord_def> &areas,
+                        const string &move_verb = "step",
+                        bool *prompted = nullptr);
 bool check_moveto_cloud(const coord_def& p, const string &move_verb = "step",
                         bool *prompted = nullptr);
 bool check_moveto_exclusions(const vector<coord_def> &areas,
@@ -1105,6 +1115,9 @@ bool check_moveto_exclusions(const vector<coord_def> &areas,
 bool check_moveto_exclusion(const coord_def& p,
                             const string &move_verb = "step",
                             bool *prompted = nullptr);
+bool check_moveto_trap(const vector<coord_def> &areas,
+                       const string &move_verb = "step",
+                       bool *prompted = nullptr);
 bool check_moveto_trap(const coord_def& p, const string &move_verb = "step",
         bool *prompted = nullptr);
 
@@ -1150,6 +1163,7 @@ int player_channelling_chance(bool max = false);
 int player_prot_life(bool allow_random = true, bool include_temp = true,
                      bool items = true);
 
+bool regeneration_is_ever_inhibited();
 bool regeneration_is_inhibited(const monster *m=nullptr);
 int player_regen();
 int player_indomitable_regen_rate();

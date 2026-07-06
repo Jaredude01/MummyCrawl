@@ -41,6 +41,7 @@
 #include "level-state-type.h"
 #include "libutil.h"
 #include "losglobal.h"
+#include "los.h"
 #include "makeitem.h"
 #include "map-knowledge.h"
 #include "mapmark.h"
@@ -243,7 +244,22 @@ static const map<spell_type, mons_spell_logic> spell_to_logic = {
     } },
     { SPELL_INVISIBILITY, {
         _should_selfench(ENCH_INVIS),
-        _fire_simple_beam,
+        [](monster &caster, mon_spell_slot, bolt& beam)
+        {
+            beam.fire();
+
+            coord_def spot;
+            int count = 0;
+            monster_pathfind path;
+            path.fill_traversability(&caster, 2, true);
+            for (radius_iterator ri(caster.pos(), 2, C_SQUARE); ri; ++ri)
+            {
+                if (path.is_reachable(*ri) && one_chance_in(++count))
+                    spot = *ri;
+            }
+            if (!spot.origin())
+                caster.move_to(spot);
+        },
         _selfench_beam_setup(BEAM_INVISIBILITY),
     } },
     { SPELL_HASTE, {
@@ -264,6 +280,23 @@ static const map<spell_type, mons_spell_logic> spell_to_logic = {
             const int dur = random_range(220, 300);
             caster.add_ench(mon_enchant(ENCH_MIGHT, &caster, dur));
             caster.add_ench(mon_enchant(ENCH_RESISTANCE, &caster, dur));
+        },
+        nullptr,
+    } },
+    { SPELL_PHASE_SHIFT, {
+        [](const monster &caster)
+        {
+            return ai_action::good_or_bad(!caster.has_ench(ENCH_PHASE_SHIFT));
+        },
+        [](monster &caster, mon_spell_slot, bolt&)
+        {
+            if (!you.can_see_invisible())
+                simple_monster_message(caster, " form blurs.", true);
+            else
+                simple_monster_message(caster, " form wavers for a moment.", true);
+            flash_tile(caster.pos(), LIGHTBLUE);
+            const int dur = random_range(220, 300);
+            caster.add_ench(mon_enchant(ENCH_PHASE_SHIFT, &caster, dur));
         },
         nullptr,
     } },
@@ -528,7 +561,13 @@ static const map<spell_type, mons_spell_logic> spell_to_logic = {
         _caster_sees_foe,
         [](monster &caster, mon_spell_slot slot, bolt&) {
             flash_tile(caster.get_foe()->pos(), MAGENTA, 120, TILE_BOLT_ANTIMAGIC_GAZE);
+            actor* foe = caster.get_foe();
             caster.get_foe()->drain_magic(&caster, mons_spellpower(caster, slot.spell));
+
+            // It isn't worth being exhaustive about this sort of thing, but this
+            // is by far one of the most common scenarios, and worth the UI hint.
+            if (foe->is_player())
+                caster.sense_if_invisible(false);
         },
     } },
     { SPELL_WEAKENING_GAZE, {
@@ -873,7 +912,7 @@ static const map<spell_type, mons_spell_logic> spell_to_logic = {
             if (you.can_see(caster))
             {
                 targeter_radius hitfunc(&caster, LOS_SOLID, 2);
-                flash_view_delay(UA_MONSTER, DARKGREY, 200, &hitfunc);
+                flash_view_delay(UA_MONSTER, DARKGREY, 200, 0, &hitfunc);
                 mprf("%s draws nearby shadows into %s.",
                     caster.name(DESC_THE).c_str(),
                     caster.pronoun(PRONOUN_REFLEXIVE).c_str());
@@ -1653,6 +1692,32 @@ static void _cast_regenerate_other(monster* caster)
     }
 }
 
+static void _cast_touch_of_paradox(monster* caster)
+{
+    int seen = 0;
+    monster* targ = nullptr;
+
+    for (monster_near_iterator mi(caster, LOS_NO_TRANS); mi; ++mi)
+    {
+        if (*mi != caster && mons_aligned(caster, *mi)
+            && mons_has_attacks(*mi->as_monster())
+            && !mi->has_ench(ENCH_PARADOX_TOUCHED))
+        {
+            if (one_chance_in(++seen))
+                targ = *mi;
+        }
+    }
+
+    if (targ != nullptr)
+    {
+        const int pow = mons_spellpower(*caster, SPELL_TOUCH_OF_PARADOX);
+        int dur = (4 + roll_dice(2, pow / 20)) * BASELINE_DELAY;
+        flash_tile(targ->pos(), MAGENTA, 120, TILE_BOLT_CORRUPTION);
+        simple_monster_message(*targ, " is touched by paradox!");
+        targ->add_ench(mon_enchant(ENCH_PARADOX_TOUCHED, caster, dur));
+    }
+}
+
 static void _cast_mass_regeneration(monster* caster)
 {
     vector<monster*> targs;
@@ -1820,7 +1885,7 @@ static void _cast_siphon_essence(monster &caster, mon_spell_slot, bolt&)
     if (you.see_cell(caster.pos()))
     {
         targeter_radius hitfunc(&caster, LOS_SOLID, 2);
-        flash_view_delay(UA_MONSTER, DARKGREY, 200, &hitfunc);
+        flash_view_delay(UA_MONSTER, DARKGREY, 200, 0, &hitfunc);
         seen = true;
     }
 
@@ -2794,6 +2859,7 @@ bool setup_mons_cast(const monster* mons, bolt &pbolt, spell_type spell_cast,
     case SPELL_FUNERAL_DIRGE:
     case SPELL_MANIFOLD_ASSAULT:
     case SPELL_REGENERATE_OTHER:
+    case SPELL_TOUCH_OF_PARADOX:
     case SPELL_MASS_REGENERATION:
     case SPELL_BESTOW_ARMS:
     case SPELL_FULMINANT_PRISM:
@@ -3261,25 +3327,24 @@ static void _corrupt_locale(monster &mons)
     lugonu_corrupt_level_monster(mons);
 }
 
-static void _set_door(const vector<coord_def>& door, dungeon_feature_type feat)
-{
-    for (const auto &dc : door)
-    {
-        env.grid(dc) = feat;
-        set_terrain_changed(dc);
-    }
-}
-
 static int _tension_door_closed(const vector<coord_def>& door)
 {
     ASSERT(!door.empty());
     const dungeon_feature_type old_feat = env.grid(door[0]);
-    // this unwind is a bit heavy, but because out-of-los clouds dissipate
-    // instantly, they can be wiped out by these door tests.
-    unwind_var<map<coord_def, cloud_struct>> cloud_state(env.cloud);
-    _set_door(door, DNGN_CLOSED_DOOR);
+    // Simulate the tension with closed doors. We don't want to do a full
+    // terrain change, as this would have side effects like removing clouds,
+    // but we do need to invalidate the LoS cache.
+    for (coord_def dc : door)
+    {
+        env.grid(dc) = DNGN_CLOSED_DOOR;
+        los_terrain_changed(dc);
+    }
     const int new_tension = get_tension(GOD_NO_GOD);
-    _set_door(door, old_feat);
+    for (coord_def dc : door)
+    {
+        env.grid(dc) = old_feat;
+        los_terrain_changed(dc);
+    }
     return new_tension;
 }
 
@@ -3567,9 +3632,7 @@ static bool _seal_doors_and_stairs(const monster* warden,
                     if (env.map_knowledge(dc).seen())
                     {
                         update_terrain_knowledge(dc);
-#ifdef USE_TILE
-                        tile_env.bk_bg(dc) = TILE_DNGN_CLOSED_DOOR;
-#endif
+                        redraw_view_at(dc);
                     }
                 }
 
@@ -3840,7 +3903,7 @@ static ai_action::goodness _arcjolt_goodness(const monster &caster)
 
 static ai_action::goodness _scorch_goodness(const monster& caster)
 {
-    auto targeter = make_unique<targeter_scorch>(caster, 3, true);
+    auto targeter = make_unique<targeter_scorch>(caster, 3);
     for (auto ti = targeter->affected_iterator(AFF_MAYBE); ti; ++ti)
     {
         if (actor_at(*ti)->res_fire() < 3)
@@ -4352,7 +4415,7 @@ static void _corrupting_pulse(monster *mons)
     if (you.see_cell(mons->pos()))
     {
         targeter_radius hitfunc(mons, LOS_NO_TRANS);
-        flash_view_delay(UA_MONSTER, MAGENTA, 300, &hitfunc);
+        flash_view_delay(UA_MONSTER, MAGENTA, 300, 0, &hitfunc);
 
         if (could_harm_enemy(mons, &you, true)
             && cell_see_cell(you.pos(), mons->pos(), LOS_NO_TRANS))
@@ -6498,8 +6561,8 @@ static branch_summon_pair _invitation_summons[] =
     }},
   { BRANCH_ELF,
     { // Elf enemies
-      {  1,   1,   50, FLAT, MONS_DEEP_ELF_AIR_MAGE },
-      {  1,   1,   50, FLAT, MONS_DEEP_ELF_FIRE_MAGE },
+      {  1,   1,   50, FLAT, MONS_DEEP_ELF_ZEPHYRMANCER },
+      {  1,   1,   50, FLAT, MONS_DEEP_ELF_PYROMANCER },
       {  1,   1,   40, FLAT, MONS_DEEP_ELF_KNIGHT },
     }},
   { BRANCH_VAULTS,
@@ -7810,7 +7873,7 @@ void mons_cast(monster* mons, bolt pbolt, spell_type spell_cast,
             return;
         if (foe->is_player())
             mpr("The long-dead rise up around you.");
-        else if (you.can_see(*foe))
+        else if (you.see_cell(foe->pos()))
             mprf("The long-dead rise up around %s.", foe->name(DESC_THE).c_str());
         _cast_vanquished_vanguard(mons);
         return;
@@ -8753,6 +8816,10 @@ void mons_cast(monster* mons, bolt pbolt, spell_type spell_cast,
 
     case SPELL_BESTOW_ARMS:
         _cast_bestow_arms(*mons);
+        return;
+
+    case SPELL_TOUCH_OF_PARADOX:
+        _cast_touch_of_paradox(mons);
         return;
 
     case SPELL_FULMINANT_PRISM:
@@ -9919,6 +9986,20 @@ ai_action::goodness monster_spell_goodness(monster* mon, spell_type spell)
     case SPELL_REGENERATE_OTHER:
     case SPELL_MASS_REGENERATION:
         return _ally_needs_regeneration(*mon);
+
+    case SPELL_TOUCH_OF_PARADOX:
+        if (!foe || !mon->can_see(*foe))
+            return ai_action::bad();
+
+        for (monster_near_iterator mi(mon, LOS_NO_TRANS); mi; ++mi)
+        {
+            if (*mi != mon && mons_aligned(mon, *mi)
+                && mons_has_attacks(**mi) && !mi->has_ench(ENCH_PARADOX_TOUCHED))
+            {
+                return ai_action::good();
+            }
+        }
+        return ai_action::bad();
 
     case SPELL_POISONOUS_CLOUD:
     case SPELL_MEPHITIC_CLOUD:

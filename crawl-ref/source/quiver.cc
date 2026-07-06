@@ -542,7 +542,7 @@ namespace quiver
                 if (you.cannot_move())
                 {
                     // XX duplicate code with movement.cc:move_player_action
-                    if (cancel_confused_move(true))
+                    if (!check_confused_move(true))
                         return;
 
                     if (!one_chance_in(3))
@@ -2639,12 +2639,17 @@ namespace quiver
                     first_abil += 1;
                 }
 
-                if (focus_mode != Focus::NONE)
+                // We use real letters for spells and abilities, but for items
+                // we use sequential letters, as we may have items sharing the
+                // same letter (e.g. a wand and a missile).
+                const bool use_real_letters = focus_mode != Focus::NONE
+                                              && i >= it_count;
+                if (use_real_letters)
                     hotkey = a->source_hotkey();
 
                 add_action(a, hotkey);
 
-                if (focus_mode == Focus::NONE)
+                if (!use_real_letters)
                     hotkey++;
                 i++;
             }

@@ -552,7 +552,7 @@ static bool _is_safe_move(const coord_def& c)
     {
         // Stop before wasting energy on plants and fungi,
         // unless worshipping Fedhas.
-        if (you.can_see(*mon) && mon->is_firewood() && !fedhas_passthrough(mon))
+        if (you.aware_of(*mon) && mon->is_firewood() && !fedhas_passthrough(mon))
             return false;
 
         // If this is any *other* monster, it'll be visible and
@@ -1104,10 +1104,6 @@ command_type travel()
             duration_type type = Options.explore_auto_rest_status[i];
 
             if (you.duration[type] == 0)
-                continue;
-
-            // Only rest off the bad part of Swiftness
-            if (type == DUR_SWIFTNESS && you.attribute[ATTR_SWIFTNESS] > 0)
                 continue;
 
             // Only try to rest off transformations when this is both possible

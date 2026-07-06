@@ -586,6 +586,9 @@ static void _show_commandline_options_help()
     puts("  -dump-disconnect    In mapstat when a disconnected level is "
          "generated, dump");
     puts("      map to map.dump and exit");
+    puts("  -veto-closets       In mapstat, veto levels with teleport closets "
+         "rather than");
+    puts("      masking the closets as in normal play");
     puts("  -objstat [<levels>] run monster and item stats on the given range "
          "of levels");
     puts("      Defaults to entire dungeon; same level syntax as -mapstat.");
@@ -2182,11 +2185,8 @@ void process_command(command_type cmd, command_type prev_cmd)
     case CMD_ENABLE_MORE:  crawl_state.show_more_prompt = true;  break;
 
     case CMD_TOGGLE_AUTOPICKUP:
-        if (Options.autopickup_on < 1)
-            Options.autopickup_on = 1;
-        else
-            Options.autopickup_on = 0;
-        mprf("Autopickup is now %s.", Options.autopickup_on > 0 ? "on" : "off");
+        Options.autopickup_on = !Options.autopickup_on;
+        mprf("Autopickup is now %s.", Options.autopickup_on ? "on" : "off");
         break;
 
 #ifdef USE_SOUND
@@ -2200,6 +2200,7 @@ void process_command(command_type cmd, command_type prev_cmd)
     case CMD_CLEAR_MAP:       clear_map_or_travel_trail(); break;
     case CMD_DISPLAY_OVERMAP: display_overview(); break;
     case CMD_DISPLAY_MAP:     _do_display_map(); break;
+    case CMD_IGNORE_INVISIBLE: env.invis_knowledge.suppress_invis_warning(); break;
 
 #ifdef USE_TILE
     case CMD_ZOOM_IN:   tiles.zoom_dungeon(true); break;
@@ -2657,6 +2658,8 @@ void world_reacts()
 
     manage_clouds();
 
+    handle_lurkers();
+
     // This needs to happen after `manage_clouds` is called as fog clouds
     // decaying will affect whether a monster is still in view
     print_mons_left_view_messages();
@@ -2667,6 +2670,7 @@ void world_reacts()
         player_reacts_to_monsters();
 
     clear_monster_flags();
+    env.invis_knowledge.handle_time();
 
     viewwindow();
 
@@ -2809,7 +2813,7 @@ static void _swing_at_target(coord_def move)
     if (monster* mon = monster_at(target.target))
         if (!could_harm(&you, mon, true, true))
         {
-            if (!you.can_see(*mon))
+            if (!you.aware_of(*mon))
                 you.turn_is_over = true;
             return;
         }

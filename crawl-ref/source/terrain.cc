@@ -470,6 +470,17 @@ bool feat_is_open_door(dungeon_feature_type feat)
         || feat == DNGN_BROKEN_CLEAR_DOOR;
 }
 
+/** Is this feature a door that you can see through?
+*/
+bool feat_is_clear_door(dungeon_feature_type feat)
+{
+    return feat == DNGN_CLOSED_CLEAR_DOOR
+           || feat == DNGN_BROKEN_CLEAR_DOOR
+           || feat == DNGN_OPEN_CLEAR_DOOR
+           || feat == DNGN_RUNED_CLEAR_DOOR
+           || feat == DNGN_SEALED_CLEAR_DOOR;
+}
+
 /** Has this feature been sealed by a vault warden?
  */
 bool feat_is_sealed(dungeon_feature_type feat)
@@ -1361,18 +1372,17 @@ static void _current_terrain_changed(coord_def pos,
         _dgn_check_terrain_player(pos);
 
     set_terrain_changed(pos);
-
-    // Deal with doors being created by changing features.
-    tile_init_flavour(pos);
 }
 
 static void _permanent_terrain_changed(coord_def pos,
-                                       dungeon_feature_type nfeat)
+                                       dungeon_feature_type nfeat,
+                                       bool preserve_mimics)
 {
     // XXX: do we ever call this with nfeat == DNGN_UNSEEN?
     if (nfeat != DNGN_UNSEEN)
         unnotice_feature(level_pos(level_id::current(), pos));
-    env.level_map_mask(pos) &= ~MMT_MIMIC;
+    if (!preserve_mimics)
+        env.level_map_mask(pos) &= ~MMT_MIMIC;
 }
 
 /**
@@ -1392,12 +1402,13 @@ void dungeon_terrain_changed(const coord_def &pos,
                              dungeon_feature_type nfeat,
                              bool preserve_features,
                              bool preserve_items,
-                             bool wizmode)
+                             bool wizmode,
+                             bool preserve_mimics)
 {
     // XXX: If there is a temporary terrain change, reverting it will also
-    // revert this change. This isn't always what we want and doesn't work well
-    // with us calling _permanent_terrain_changed.
-    _permanent_terrain_changed(pos, nfeat);
+    // revert this change. This isn't always what we want.
+    if (!is_temp_terrain(pos))
+        _permanent_terrain_changed(pos, nfeat, preserve_mimics);
     _current_terrain_changed(pos, nfeat, preserve_features, preserve_items,
                              wizmode, 0, 0);
 }
@@ -1414,7 +1425,7 @@ void dungeon_change_base_terrain(coord_def pos, dungeon_feature_type nfeat)
         tmarker->flv_old_feature_idx = 0;
         temp_terrain = true;
     }
-    _permanent_terrain_changed(pos, nfeat);
+    _permanent_terrain_changed(pos, nfeat, false);
     if (temp_terrain)
         return;
     _current_terrain_changed(pos, nfeat, false, true, false, 0, 0);
@@ -2008,23 +2019,6 @@ void set_terrain_changed(const coord_def p)
 
     if (env.grid(p) == DNGN_SLIMY_WALL)
         env.level_state |= LSTATE_SLIMY_WALL;
-    else if (env.grid(p) == DNGN_OPEN_DOOR)
-    {
-        // Restore colour from door-change markers
-        for (map_marker *marker : env.markers.get_markers_at(p, MAT_TERRAIN_CHANGE))
-        {
-            map_terrain_change_marker* tmarker =
-                dynamic_cast<map_terrain_change_marker*>(marker);
-
-            if (tmarker->change_type == TERRAIN_CHANGE_DOOR_SEAL
-                && tmarker->colour != BLACK)
-            {
-                // Restore the unsealed colour.
-                dgn_set_grid_colour_at(p, tmarker->colour);
-                break;
-            }
-        }
-    }
     else if (env.grid(p) == DNGN_MOULD_PATCH)
         update_mould_tracking(p);
 
@@ -2516,8 +2510,7 @@ void dgn_close_door(const coord_def &dest)
         return;
 
     // Yes, this fixes broken doors.
-    const auto feat = env.grid(dest);
-    if (feat == DNGN_OPEN_CLEAR_DOOR || feat == DNGN_BROKEN_CLEAR_DOOR)
+    if (feat_is_clear_door(env.grid(dest)))
         env.grid(dest) = DNGN_CLOSED_CLEAR_DOOR;
     else
         env.grid(dest) = DNGN_CLOSED_DOOR;
@@ -2533,11 +2526,10 @@ void dgn_open_door(const coord_def &dest)
     if (!feat_is_closed_door(env.grid(dest)))
         return;
 
-    if (env.grid(dest) == DNGN_CLOSED_CLEAR_DOOR
-        || env.grid(dest) == DNGN_RUNED_CLEAR_DOOR)
-    {
+    revert_terrain_change(dest, TERRAIN_CHANGE_DOOR_SEAL);
+
+    if (feat_is_clear_door(env.grid(dest)))
         env.grid(dest) = DNGN_OPEN_CLEAR_DOOR;
-    }
     else
         env.grid(dest) = DNGN_OPEN_DOOR;
 }
@@ -2552,11 +2544,10 @@ void dgn_break_door(const coord_def &dest)
     if (!feat_is_closed_door(env.grid(dest)))
         return;
 
-    if (env.grid(dest) == DNGN_CLOSED_CLEAR_DOOR
-        || env.grid(dest) == DNGN_RUNED_CLEAR_DOOR)
-    {
+    revert_terrain_change(dest, TERRAIN_CHANGE_DOOR_SEAL);
+
+    if (feat_is_clear_door(env.grid(dest)))
         env.grid(dest) = DNGN_BROKEN_CLEAR_DOOR;
-    }
     else
         env.grid(dest) = DNGN_BROKEN_DOOR;
 }

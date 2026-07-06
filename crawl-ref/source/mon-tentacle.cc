@@ -17,6 +17,7 @@
 #include "libutil.h" // map_find
 #include "losglobal.h"
 #include "mgen-data.h"
+#include "mon-behv.h"
 #include "mon-death.h"
 #include "mon-place.h"
 #include "nearby-danger.h"
@@ -184,24 +185,17 @@ bool mons_tentacle_adjacent(const monster* parent, const monster* child)
 monster& get_tentacle_head(const monster& mon)
 {
     const monster* m = &mon;
-    // For tentacle segments, find the associated tentacle.
-    if (m->is_child_tentacle_segment())
+
+    // Climb tentacle_connect until we reach the monster the part ultimately
+    // belongs to.
+    while (m->is_child_monster()
+           || mons_is_tentacle_segment(mons_base_type(*m)))
     {
-        monster* tentacle = monster_by_mid(m->tentacle_connect);
-        if (!tentacle)
-            return const_cast<monster&>(*m);
+        monster* parent = monster_by_mid(m->tentacle_connect);
+        if (!parent || parent == m)
+            break;
 
-        m = tentacle;
-    }
-
-    // For tentacles, find the associated head.
-    if (m->is_child_tentacle())
-    {
-        monster* head = monster_by_mid(m->tentacle_connect);
-        if (!head)
-            return const_cast<monster&>(*m);
-
-        m = head;
+        m = parent;
     }
 
     return const_cast<monster&>(*m);
@@ -629,6 +623,9 @@ static void _collect_foe_positions(monster *mons,
 {
     coord_def foe_pos(-1, -1);
     actor * foe = mons->get_foe();
+    // We put the foe in the vector first, though note that the
+    // pathfinding algorithm that uses this don't actually care about
+    // the order, so in fact tentacles ignore their foe.
     if (foe && sight_check(foe))
     {
         foe_positions.push_back(mons->get_foe()->pos());
@@ -715,6 +712,7 @@ void move_solo_tentacle(monster* tentacle)
                 [tentacle, base_position](const actor *test) -> bool
                 {
                     return test->visible_to(tentacle)
+                        && monster_los_is_valid(tentacle, test)
                         && cell_see_cell(base_position, test->pos(),
                                          LOS_SOLID_SEE);
                 });

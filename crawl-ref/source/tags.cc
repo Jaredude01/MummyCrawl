@@ -61,9 +61,11 @@
 #include "items.h"
 #include "jobs.h"
 #include "mapmark.h"
+#include "map-knowledge.h"
 #include "misc.h"
 #include "mon-death.h"
 #include "mon-ench.h"
+#include "mon-lurk.h"
 #if TAG_MAJOR_VERSION == 34
  #include "mon-place.h"
  #include "mon-poly.h"
@@ -2114,6 +2116,7 @@ static void marshallRankPietyInfo(writer &th, RankPietyInfo r)
     marshallInt(th, r.piety_on_penance);
     marshallInt(th, r.piety_on_gifts);
     marshallInt(th, r.piety_on_stepdowns);
+    marshallInt(th, r.piety_at_max);
 }
 
 static void marshallConductInfo(writer &th, const ConductPietyInfo &cp_info)
@@ -2153,6 +2156,11 @@ static RankPietyInfo unmarshallRankPietyInfo(reader &th)
     r.piety_on_penance = unmarshallInt(th);
     r.piety_on_gifts = unmarshallInt(th);
     r.piety_on_stepdowns = unmarshallInt(th);
+#if TAG_MAJOR_VERSION == 34
+    if (th.getMinorVersion() >= TAG_MINOR_MAX_PIETY_LOGGING)
+#endif
+        r.piety_at_max = unmarshallInt(th);
+
     return r;
 }
 
@@ -2460,6 +2468,48 @@ static subvault_place unmarshall_subvault_place(reader &th)
     subvault.br = unmarshallCoord(th);
     subvault.set_subvault(unmarshall_mapdef(th));
     return subvault;
+}
+
+static invis_mon_data unmarshall_invis_mon_data(reader &th)
+{
+    invis_mon_data data;
+    data.mid = unmarshallInt(th);
+    data.last_seen_time = unmarshallInt(th);
+    data.last_known_pos = unmarshallCoord(th);
+    data.last_player_pos = unmarshallCoord(th);
+
+    return data;
+}
+
+static void marshall_invis_mon_data(writer &th, const invis_mon_data &data)
+{
+    marshallInt(th, data.mid);
+    marshallInt(th, data.last_seen_time);
+    marshallCoord(th, data.last_known_pos);
+    marshallCoord(th, data.last_player_pos);
+}
+
+void invis_monster_knowledge::marshall(writer &th) const
+{
+    marshallInt(th, data.size());
+    for (const auto& entry : data)
+        marshall_invis_mon_data(th, entry);
+}
+
+void invis_monster_knowledge::unmarshall(reader &th)
+{
+    _unmarshall_vector(th, data, unmarshall_invis_mon_data);
+}
+
+static lurker_data _unmarshall_lurker_data(reader &th)
+{
+    lurker_data data;
+    data.mon = unmarshall_follower(th);
+    data.pos = unmarshallCoord(th);
+    data.alerted = unmarshallBoolean(th);
+    data.timer = unmarshallInt(th);
+    data.ignore_threat = unmarshallBoolean(th);
+    return data;
 }
 
 static void marshall_vault_placement(writer &th, const vault_placement &vp)
@@ -3587,6 +3637,16 @@ static void _tag_read_you(reader &th)
         // Fix bugged negative charges.
         if (you.duration[DUR_DIVINE_SHIELD] < 0)
             you.duration[DUR_DIVINE_SHIELD] = 0;
+    }
+
+    if (th.getMinorVersion() < TAG_MINOR_SWIFTNESS_REFACTOR
+        && you.attribute[ATTR_SWIFTNESS] < 0)
+    {
+        // Swiftness's backlash used to be tracked as DUR_SWIFTNESS with a
+        // negative ATTR_SWIFTNESS; it now has its own duration.
+        you.duration[DUR_ANTISWIFT] = you.duration[DUR_SWIFTNESS];
+        you.duration[DUR_SWIFTNESS] = 0;
+        you.attribute[ATTR_SWIFTNESS] = 0;
     }
 
     if (th.getMinorVersion() < TAG_MINOR_SIMPLIFY_STAT_ZERO)
@@ -5717,6 +5777,18 @@ static void _tag_construct_level(writer &th)
     marshallInt(th, env.forest_awoken_until);
     marshall_level_vault_data(th);
     marshallInt(th, env.density);
+
+    env.invis_knowledge.marshall(th);
+
+    marshallInt(th, env.lurkers.size());
+    for (const lurker_data& data : env.lurkers)
+    {
+        marshall_follower(th, data.mon);
+        marshallCoord(th, data.pos);
+        marshallBoolean(th, data.alerted);
+        marshallInt(th, data.timer);
+        marshallBoolean(th, data.ignore_threat);
+    }
 }
 
 void marshallItem(writer &th, const item_def &item, bool iinfo)
@@ -6447,7 +6519,7 @@ void marshallMapCell(writer &th, const map_cell &cell)
     if (cell.item())
         flags |= MAP_SERIALIZE_ITEM;
 
-    if (cell.monster() != MONS_NO_MONSTER)
+    if (cell.mon_type() != MONS_NO_MONSTER)
         flags |= MAP_SERIALIZE_MONSTER;
 
     marshallUnsigned(th, flags);
@@ -7239,6 +7311,20 @@ static void _fixup_tree_positions(MapKnowledge& map_knowledge)
         }
     }
 }
+
+static void _fixup_door_connect_knowledge(MapKnowledge& map_knowledge)
+{
+    for (rectangle_iterator ri(0); ri; ++ri)
+    {
+        if (feat_is_door(map_knowledge(*ri).feat()))
+            continue;
+
+        unsigned short door_connect = 0;
+        if (feat_is_door(map_knowledge(*ri).feat()))
+            door_connect = tile_door_connect(*ri);
+        map_knowledge(*ri).set_door_connect(door_connect);
+    }
+}
 #endif
 
 static void _tag_read_level(reader &th)
@@ -7305,6 +7391,8 @@ static void _tag_read_level(reader &th)
         _fixup_cloud_varieties(env.map_knowledge);
     if (th.getMinorVersion() < TAG_MINOR_TREE_POSITIONS)
         _fixup_tree_positions(env.map_knowledge);
+    if (th.getMinorVersion() < TAG_MINOR_FIX_DOOR_INFO_LEAK)
+        _fixup_door_connect_knowledge(env.map_knowledge);
 #endif
 
 #if TAG_MAJOR_VERSION == 34
@@ -7324,6 +7412,8 @@ static void _tag_read_level(reader &th)
             _fixup_blood_knowledge(*f);
         if (th.getMinorVersion() <= TAG_MINOR_FIX_POLAR_VORTEX_INFO_LEAK)
             _fixup_cloud_varieties(*f);
+        if (th.getMinorVersion() < TAG_MINOR_FIX_DOOR_INFO_LEAK)
+            _fixup_door_connect_knowledge(*f);
 #endif
         env.map_forgotten.reset(f);
     }
@@ -7523,6 +7613,22 @@ static void _tag_read_level(reader &th)
             unmarshallCoord(th);
             unmarshallInt(th);
         }
+    }
+
+    if (th.getMinorVersion() >= TAG_MINOR_INVIS_REFORM)
+    {
+#endif
+    env.invis_knowledge.clear();
+    env.invis_knowledge.unmarshall(th);
+#if TAG_MAJOR_VERSION == 34
+    }
+    if (th.getMinorVersion() >= TAG_MINOR_INVIS_REFORM)
+    {
+#endif
+    env.lurkers.clear();
+    _unmarshall_vector(th, env.lurkers, _unmarshall_lurker_data);
+    init_lurker_map();
+#if TAG_MAJOR_VERSION == 34
     }
 #endif
 }

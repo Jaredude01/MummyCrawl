@@ -1206,6 +1206,10 @@ void bolt::do_fire()
         return;
     }
 
+    // Visible beams reveal the presence of invisible monsters.
+    if (visible() && agent() && agent()->is_monster() && !is_tracer())
+        agent()->as_monster()->sense_if_invisible();
+
     cursor_control coff(false);
 
     msg_generated = false;
@@ -1764,7 +1768,8 @@ int mons_adjust_flavoured(monster* mons, bolt &pbolt, int hurted,
     case BEAM_BOLAS:
         if (doFlavouredEffects)
         {
-            if (mons->is_insubstantial() || mons->is_amorphous())
+            bool seen = you.see_cell(mons->pos());
+            if ((mons->is_insubstantial() || mons->is_amorphous()) && seen)
             {
                 mprf("The bolas passes through %s!",
                       mons->name(DESC_THE).c_str());
@@ -1773,9 +1778,12 @@ int mons_adjust_flavoured(monster* mons, bolt &pbolt, int hurted,
             {
                 mons->add_ench(mon_enchant(ENCH_BOUND, pbolt.agent(),
                                            random_range(4, 8)));
-                mprf("The bolas warps around %s and binds %s in place!",
-                     mons->name(DESC_THE).c_str(),
-                     mons->pronoun(PRONOUN_OBJECTIVE).c_str());
+                if (seen)
+                {
+                    mprf("The bolas warps around %s and binds %s in place!",
+                            mons->name(DESC_THE).c_str(),
+                            mons->pronoun(PRONOUN_OBJECTIVE).c_str());
+                }
             }
         }
         break;
@@ -3066,6 +3074,9 @@ void bolt::affect_place_explosion_clouds()
     if (origin_spell == SPELL_FORGE_BLAZEHEART_GOLEM)
         place_cloud(CLOUD_FIRE, p, 2 + random2avg(5,2), agent());
 
+    if (origin_spell == SPELL_INNER_FLAME)
+        place_cloud(CLOUD_FIRE, p, 10 + random2(10), agent());
+
     if (origin_spell == SPELL_FIRE_STORM)
     {
         place_cloud(CLOUD_FIRE, p, 2 + random2avg(5,2), agent());
@@ -4198,15 +4209,6 @@ void bolt::affect_player()
         return;
     }
 
-    // Visible beams reveal invisible monsters; otherwise animations confer
-    // an information advantage for sighted players
-    if (visible() && agent() && agent()->is_monster())
-    {
-        monster* mons = agent()->as_monster();
-        mons->revealed_this_turn = true;
-        mons->revealed_at_pos = mons->pos();
-    }
-
     if (misses_player())
         return;
 
@@ -4811,7 +4813,7 @@ void bolt::tracer_nonenchantment_affect_monster(monster* mon)
 void bolt::tracer_affect_monster(monster* mon)
 {
     // Ignore unseen monsters.
-    if ((agent() && !agent()->can_see(*mon))
+    if ((agent() && !agent()->aware_of(*mon))
         || !cell_see_cell(source, mon->pos(), LOS_DEFAULT))
     {
         return;
@@ -4843,7 +4845,7 @@ void bolt::enchantment_affect_monster(monster* mon)
     {
         if (BLAME_KILL(thrower))
         {
-            set_attack_conducts(conducts, *mon, you.can_see(*mon));
+            set_attack_conducts(conducts, *mon, you.aware_of(*mon));
 
             if (have_passive(passive_t::convert_orcs)
                 && mons_genus(mon->type) == MONS_ORC
@@ -4907,6 +4909,8 @@ void bolt::enchantment_affect_monster(monster* mon)
     handle_enchant_chaining(mon->pos());
 
     extra_range_used += range_used_on_hit();
+    if (range_used() > range)
+        mon->sense_if_invisible();
 
     // Nasty enchantments will annoy the monster, and are considered
     // naughty (even if a monster resisted).
@@ -4937,7 +4941,7 @@ static void _add_chain_candidates(const bolt& beam, coord_def pos,
             || mons_aligned(beam.agent(), act)
             || act->is_peripheral()
             || shoot_through_actor(beam.agent(), act)
-            || (beam.is_tracer() && !act->visible_to(beam.agent())))
+            || (beam.is_tracer() && !beam.agent()->aware_of(*act)))
         {
             continue;
         }
@@ -5375,6 +5379,8 @@ bool bolt::attempt_block(monster* mon)
     if (sh_hit >= shield_block || mon->shield_exhausted())
         return false;
 
+    mon->sense_if_invisible();
+
     item_def *shield = mon->mslot_item(MSLOT_SHIELD);
     if (is_reflectable(*mon))
     {
@@ -5516,6 +5522,7 @@ void bolt::affect_monster(monster* mon)
         // It hit a monster, so the beam should terminate.
         // Don't actually affect the monster; the explosion
         // will take care of that.
+        mon->sense_if_invisible();
         finish_beam();
         return;
     }
@@ -5542,7 +5549,7 @@ void bolt::affect_monster(monster* mon)
     if (nasty_to(mon))
     {
         if (agent() && agent()->is_player()  && final > 0)
-            set_attack_conducts(conducts, *mon, you.can_see(*mon));
+            set_attack_conducts(conducts, *mon, you.aware_of(*mon));
     }
 
     if (engulfs && flavour == BEAM_SPORE // XXX: engulfs is redundant?
@@ -5569,7 +5576,9 @@ void bolt::affect_monster(monster* mon)
 
     defer_rand r;
     const int repel = mon->missile_repulsion();
-    int rand_ev = random2(mon->evasion() + repel);
+    const int phasing = !can_see_invis && mon->has_ench(ENCH_PHASE_SHIFT) ? PHASE_SHIFT_EV_BONUS
+                                                                          : 0;
+    int rand_ev = random2(mon->evasion() + repel + phasing);
 
     int hit_margin = _test_beam_hit(beam_hit, rand_ev, r);
 
@@ -5645,6 +5654,9 @@ void bolt::affect_monster(monster* mon)
                 postac ? "" : " but does no damage",
                 attack_strength_punctuation(final).c_str());
         }
+
+        if (!pierce)
+            mon->sense_if_invisible();
     }
     else if (heard && !hit_noise_msg.empty())
         mprf(MSGCH_SOUND, "%s", hit_noise_msg.c_str());
@@ -6013,9 +6025,6 @@ bool enchant_monster_invisible(monster* mon, const string &how)
              how.c_str(),
              is_visible ? " for a moment."
                         : "!");
-
-        if (!is_visible && !mons_is_safe(mon))
-            autotoggle_autopickup(true);
     }
 
     return true;
@@ -7102,7 +7111,9 @@ void bolt::determine_affected_cells(explosion_map& m, const coord_def& delta,
         // Special case: explosion originates from rock/statue
         // (e.g. Lee's Rapid Deconstruction) - in this case, ignore
         // solid cells at the center of the explosion.
-        if (stop_at_walls && !(delta.origin() && can_affect_wall(loc))
+        if (stop_at_walls
+            && !(delta.origin()
+                 && (can_affect_wall(loc) || origin_spell == SPELL_INNER_FLAME))
             // Also affect *other* wall monsters around the area, as long
             // as caster still has LOS to them (i.e. they're not on the *other*
             // side of the wall) which the later recursion loop will check
@@ -7154,6 +7165,59 @@ void bolt::determine_affected_cells(explosion_map& m, const coord_def& delta,
         determine_affected_cells(m, new_delta, count + cadd, r,
                                  stop_at_statues, stop_at_walls);
     }
+}
+
+explosion_iterator::explosion_iterator(coord_def origin, int radius,
+                                       beam_type flavour, spell_type spell,
+                                       mid_t source, bool stop_at_statues,
+                                       bool stop_at_walls)
+{
+    bolt beam;
+    beam.source_id         = source;
+    beam.target            = origin;
+    beam.use_target_as_pos = true;
+    beam.flavour           = flavour;
+    beam.origin_spell      = spell;
+
+    explosion_map affected;
+    affected.init(INT_MAX);
+    beam.determine_affected_cells(affected, coord_def(), 0, radius,
+                                  stop_at_statues, stop_at_walls);
+
+    const coord_def centre(9, 9);
+    const int r = min(radius, centre.x);
+    for (int dx = -r; dx <= r; ++dx)
+        for (int dy = -r; dy <= r; ++dy)
+        {
+            const coord_def delta(dx, dy);
+            if (affected(delta + centre) < INT_MAX)
+                cells.push_back(origin + delta);
+        }
+}
+
+explosion_iterator::operator bool() const
+{
+    return index < cells.size();
+}
+
+coord_def explosion_iterator::operator*() const
+{
+    return cells[index];
+}
+
+const coord_def* explosion_iterator::operator->() const
+{
+    return &cells[index];
+}
+
+void explosion_iterator::operator++()
+{
+    ++index;
+}
+
+void explosion_iterator::operator++(int)
+{
+    ++index;
 }
 
 // Returns true if the beam is harmful ((mostly) ignoring monster
@@ -7682,7 +7746,7 @@ void player_beam_tracer::player_hit(bool /*was_friendly*/) noexcept
 
 void player_beam_tracer::monster_hit(const bolt& beam, const monster& mon)
 {
-    if (!you.can_see(mon))
+    if (!you.aware_of(mon))
         return;
 
     if (beam.is_harmless(&mon))
@@ -7899,6 +7963,12 @@ void bolt::do_ranged_attack(actor& targ)
     if (attk.reflected)
         reflect();
     extra_range_used += attk.range_used;
+    if (ag->is_player() && targ.is_monster() && !attk.is_piercing()
+        && range_used() > range && !attk.attack_verb.empty() && !attk.is_piercing())
+    {
+        targ.as_monster()->sense_if_invisible();
+    }
+
     if (attk.did_net())
         drop_item = false;
 }

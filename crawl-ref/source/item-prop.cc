@@ -628,17 +628,17 @@ static const weapon_def Weapon_prop[] =
     { WPN_RAPIER,           "rapier",               7,  4, 12,
         SK_SHORT_BLADES, SIZE_LITTLE, SIZE_LITTLE,
         DAMV_PIERCING, 8, 20, 55, SBL_BRANDS },
-    { WPN_ATHAME,       "athame",         6, 5, 13,
+    { WPN_ATHAME,       "athame",         7, 5, 13,
         SK_SHORT_BLADES, SIZE_LITTLE, SIZE_LITTLE,
         DAMV_PIERCING, 2, 15, 100, {
-            { SPWPN_NORMAL,          38 },
-            { SPWPN_FLAMING,         9 },
-            { SPWPN_FREEZING,        9 },
-            { SPWPN_PROTECTION,      8 },
+            { SPWPN_NORMAL,          28 },
+            { SPWPN_FLAMING,         10 },
+            { SPWPN_FREEZING,        10 },
+            { SPWPN_PROTECTION,      10 },
             { SPWPN_ELECTROCUTION,   8 },
-            { SPWPN_DEVIOUS,         6 },
-            { SPWPN_VAMPIRISM,       6 },
-            { SPWPN_DRAINING,        4 },
+            { SPWPN_DEVIOUS,         8 },
+            { SPWPN_VAMPIRISM,       8 },
+            { SPWPN_DRAINING,        6 },
             { SPWPN_SPEED,           4 },
             { SPWPN_PAIN,            4 },
             { SPWPN_HOLY_WRATH,      2 },
@@ -3737,23 +3737,31 @@ bool is_usable_talisman(const item_def& item)
     return cannot_put_on_talisman_reason(item, false).empty();
 }
 
-bool item_gives_equip_slots(const item_def& item)
+// The equipment slot type(s) an item grants extra slots of (empty if none).
+vector<equipment_slot> item_granted_slots(const item_def& item)
 {
     if (!is_unrandom_artefact(item))
-        return false;
+        return {};
 
     switch (item.unrand_idx)
     {
         case UNRAND_FINGER_AMULET:
-        case UNRAND_JUSTICARS_REGALIA:
-        case UNRAND_FISTICLOAK:
-        case UNRAND_SKULL_OF_ZONGULDROK:
         case UNRAND_VAINGLORY:
-            return true;
-
+            return {SLOT_RING};
+        case UNRAND_JUSTICARS_REGALIA:
+            return {SLOT_AMULET};
+        case UNRAND_SKULL_OF_ZONGULDROK:
+            return {SLOT_HELMET};
+        case UNRAND_FISTICLOAK:
+            return {SLOT_GLOVES};
         default:
-            return false;
+            return {};
     }
+}
+
+bool item_gives_equip_slots(const item_def& item)
+{
+    return !item_granted_slots(item).empty();
 }
 
 bool item_grants_flight(const item_def& item)

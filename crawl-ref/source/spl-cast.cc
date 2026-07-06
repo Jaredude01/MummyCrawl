@@ -1294,8 +1294,9 @@ unique_ptr<targeter> find_spell_targeter(spell_type spell, int pow, int range)
     case SPELL_AIRSTRIKE:
         return make_unique<targeter_airstrike>();
     case SPELL_MOMENTUM_STRIKE:
-    case SPELL_DIMENSIONAL_BULLSEYE:
         return make_unique<targeter_smite>(&you, range);
+    case SPELL_DIMENSIONAL_BULLSEYE:
+        return make_unique<targeter_single_monster>();
     case SPELL_FULMINANT_PRISM:
         return make_unique<targeter_smite>(&you, range, 0, 2);
     case SPELL_GRAVITAS:
@@ -1331,7 +1332,7 @@ unique_ptr<targeter> find_spell_targeter(spell_type spell, int pow, int range)
                                                    arcjolt_targets(you, false));
     case SPELL_PLASMA_BEAM:
     {
-        auto plasma_targets = plasma_beam_targets(you, pow, false);
+        auto plasma_targets = plasma_beam_targets(you, pow);
         auto plasma_paths = plasma_beam_paths(you.pos(), plasma_targets);
         const aff_type a = plasma_targets.size() == 1 ? AFF_YES : AFF_MAYBE;
         return make_unique<targeter_multiposition>(&you, plasma_paths, a);
@@ -1407,7 +1408,7 @@ unique_ptr<targeter> find_spell_targeter(spell_type spell, int pow, int range)
     case SPELL_DISCORD:
         return make_unique<targeter_discord>();
     case SPELL_IGNITION:
-        return make_unique<targeter_multifireball>(&you,
+        return make_unique<targeter_ignition>(&you,
                    get_ignition_blast_sources(&you, true));
 
     // Summons. Most summons have a simple range 2 radius, see
@@ -1476,11 +1477,11 @@ unique_ptr<targeter> find_spell_targeter(spell_type spell, int pow, int range)
         return make_unique<targeter_multiposition>(&you,
                                                    _simple_find_all_hostiles());
     case SPELL_SCORCH:
-        return make_unique<targeter_scorch>(you, range, false);
+        return make_unique<targeter_scorch>(you, range);
     case SPELL_DRAGON_CALL: // this is just convenience: you can start the spell
                             // with no enemies in sight
-        return make_unique<targeter_multifireball>(&you,
-                                                   _simple_find_all_hostiles());
+        return make_unique<targeter_dragon_call>(&you,
+                                                 _simple_find_all_hostiles());
     case SPELL_NOXIOUS_BOG:
         return make_unique<targeter_bog>(&you);
     case SPELL_FLAME_WAVE:
@@ -1541,6 +1542,10 @@ unique_ptr<targeter> find_spell_targeter(spell_type spell, int pow, int range)
                                                                     ? AFF_MAYBE
                                                                     : AFF_YES);
     }
+
+    case SPELL_CLOCKWORK_BEE:
+    case SPELL_HAUNT:
+        return make_unique<targeter_single_monster>();
 
     default:
         break;
@@ -1622,7 +1627,8 @@ static int _to_hit_pct(const monster_info& mi, int acc)
     if (acc <= 1)
         return mi.ev <= 2 ? 100 : 0;
 
-    const int base_ev = mi.ev + (mi.is(MB_DEFLECT_MSL) ? DEFLECT_MISSILES_EV_BONUS : 0);
+    const int base_ev = mi.ev + (mi.is(MB_DEFLECT_MSL) ? DEFLECT_MISSILES_EV_BONUS : 0)
+                        + (mi.is(MB_PHASE_SHIFT) && !you.can_see_invisible() ? PHASE_SHIFT_EV_BONUS : 0);
 
     // This exhaustively tests every combination of hit and evasion rolls to determine
     // the real chance of a hit.

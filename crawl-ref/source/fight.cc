@@ -103,6 +103,8 @@ static double _to_hit_hit_chance(const monster_info& mi, attack &atk, bool melee
     const double AUTO_HIT_CHANCE = is_aux ? 3.3333 : MIN_HIT_MISS_PERCENTAGE / 2.0;
 
     int ev = mi.ev + (!melee && mi.is(MB_DEFLECT_MSL) ? DEFLECT_MISSILES_EV_BONUS : 0);
+    if (mi.is(MB_PHASE_SHIFT) && !you.can_see_invisible())
+        ev += PHASE_SHIFT_EV_BONUS;
 
     if (ev <= 0)
         return 1 - AUTO_MISS_CHANCE / 100.0;
@@ -112,6 +114,11 @@ static double _to_hit_hit_chance(const monster_info& mi, attack &atk, bool melee
     {
         // Apply post-roll manipulations:
         int adjusted_mhit = rolled_mhit + atk.post_roll_to_hit_modifiers(rolled_mhit, false);
+
+        // XXX: Duplicating the invis check in post_roll_to_hit_modifiers()
+        //      (which is otherwise skipped since the passed attack has no defender.)
+        if (mi.invisible_to_player())
+            adjusted_mhit -=6;
 
         // But the above will bail out because there's no defender in the attack object,
         // so we reproduce any possibly relevant effects here:
@@ -463,6 +470,13 @@ bool player_fight(monster* defender, bool is_rampage,
         // If wielding a ranged weapon, perform a ranged attack instead.
         if (_can_shoot_with(you.weapon()) && !you.duration[DUR_CONFUSING_TOUCH])
         {
+            if (you.can_see(*defender)
+                && !check_warning_inscriptions(*you.weapon(), OPER_FIRE))
+            {
+                return false;
+            }
+
+            defender->sense_if_invisible();
             if (do_west_wind_shot())
                 return true;
             else if (do_player_ranged_attack(defender->pos()))
@@ -1598,6 +1612,7 @@ bool warn_about_bad_targets(const char* source_name, vector<coord_def> targets,
                             const char* msg)
 {
     vector<const monster*> bad_targets;
+    bool any_penance = false;
     for (coord_def p : targets)
     {
         const monster* mon = monster_at(p);
@@ -1615,7 +1630,10 @@ bool warn_about_bad_targets(const char* source_name, vector<coord_def> targets,
         string adj, suffix;
         bool penance;
         if (bad_attack(mon, adj, suffix, penance, you.pos()))
+        {
             bad_targets.push_back(mon);
+            any_penance = any_penance || penance;
+        }
     }
 
     if (bad_targets.empty())
@@ -1628,10 +1646,13 @@ bool warn_about_bad_targets(const char* source_name, vector<coord_def> targets,
     const string and_more = bad_targets.size() > 1 ?
             make_stringf(" (and %zu other bad targets)",
                          bad_targets.size() - 1) : "";
-    const string prompt = make_stringf("%s might hit %s%s. %s",
+    const string prompt = make_stringf("%s might hit %s%s.%s %s",
                                        source_name,
                                        ex_mon->name(DESC_THE).c_str(),
                                        and_more.c_str(),
+                                       any_penance
+                                       ? " This would place you under penance!"
+                                       : "",
                                        msg);
     if (!yesno(prompt.c_str(), false, 'n'))
     {

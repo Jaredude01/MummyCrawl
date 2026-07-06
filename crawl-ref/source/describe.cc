@@ -2964,6 +2964,7 @@ string get_item_description(const item_def &item,
     case OBJ_GOLD:
     case OBJ_RUNES:
     case OBJ_GEMS:
+    case OBJ_DETECTED:
 
 #if TAG_MAJOR_VERSION == 34
     case OBJ_FOOD:
@@ -3976,7 +3977,7 @@ command_type describe_item_popup(const item_def &item,
                                  function<void (string&)> fixup_desc,
                                  bool do_actions)
 {
-    if (!item.defined())
+    if (!item.defined() && item.base_type != OBJ_DETECTED)
         return CMD_NO_CMD;
 
     // Dead players use no items.
@@ -5186,6 +5187,8 @@ static string _brand_damage_string(const monster_info &mi, brand_type brand,
         case SPWPN_FLAMING:
         case SPWPN_FREEZING:
         case SPWPN_DRAINING:
+            brand_dam = dam / 2;
+            break;
         case SPWPN_CONCUSSION:
             brand_dam = dam * 3 / 4;
             break;
@@ -6838,6 +6841,25 @@ void get_monster_db_desc(const monster_info& mi, describe_info &inf,
     if (!result.empty())
         inf.body << "\n" << result;
 
+    if (mi.is(MB_KNOWN_INVIS))
+    {
+        inf.body << "\n<magenta>"
+                 << It << " " << is << " currently invisible to you and "
+                 << "you have merely inferred " << mi.pronoun(PRONOUN_POSSESSIVE)
+                 << " position. " << uppercase_first(mi.pronoun(PRONOUN_POSSESSIVE))
+                 << " current health and status is unknown to you and your"
+                    " accuracy and defense against " << mi.pronoun(PRONOUN_POSSESSIVE)
+                 << " attacks is reduced. </magenta>";
+    }
+    else if (mi.is(MB_REMEMBERED_INVIS))
+    {
+        inf.body << "\n<magenta>"
+                 << It << " " << is << " currently invisible to you and "
+                 << mi.pronoun(PRONOUN_POSSESSIVE) << " true position is unknown, "
+                 << "but " << it << " was last observed here."
+                 << "</magenta>";
+    }
+
     if (mi.is(MB_SUMMONED))
     {
         inf.body << "\nThis monster has been ";
@@ -7199,7 +7221,7 @@ int describe_monster(const monster_info &mi, const string& /*footer*/)
         {
             mcache_entry *entry = mcache.get(t0);
             if (entry)
-                tiles.send_mcache(entry, false);
+                tiles.send_mcache(entry, false, flag & TILE_FLAG_INVIS);
             else
             {
                 tiles.json_write_comma();

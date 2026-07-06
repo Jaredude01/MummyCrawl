@@ -1151,7 +1151,7 @@ static bool _monster_avoided_death(monster* mons, killer_type killer,
         return true;
 
     // Beogh special.
-    if (mons->type == MONS_ORC_APOSTLE && you_worship(GOD_BEOGH))
+    if (mons->type == MONS_ORC_APOSTLE && you_worship(GOD_BEOGH) && !RESET_KILL(killer))
     {
         if (mons->has_ench(ENCH_TOUCH_OF_BEOGH))
         {
@@ -1563,6 +1563,11 @@ static void _make_derived_undead(monster* mons, bool quiet,
     if (requires_corpse && !mons_can_be_zombified(*mons))
         return;
 
+    // If zombifying a rider+mount, treat it as zombifying the rider. The mount
+    // will get its chance later, via mounted_kill().
+    const monster_type mtype = mons_is_rider(mons->type) ? mons_rider_type(mons->type)
+                                                         : mons->type;
+
     // Use the original monster type as the zombified type here, to
     // get the proper stats from it.
     mgen_data mg(which_z,
@@ -1575,7 +1580,7 @@ static void _make_derived_undead(monster* mons, bool quiet,
     // Don't link monster-created derived undead to the summoner, they
     // shouldn't poof
     mg.set_summoned(beh == BEH_FRIENDLY ? &you : nullptr, spell, 0, false);
-    mg.set_base(mons->type);
+    mg.set_base(mtype);
     // Prefer to be created wherever the dead monster was, but allow placing up
     // to 2 spaces away, if need be.
     mg.set_range(0, 2);
@@ -1678,7 +1683,7 @@ static void _druid_final_boon(const monster* mons)
 static void _orb_of_mayhem(actor& maniac, const monster& victim)
 {
     vector<monster *> witnesses;
-    for (monster_near_iterator mi(&victim, LOS_NO_TRANS); mi; ++mi)
+    for (monster_near_iterator mi(victim.pos(), LOS_NO_TRANS); mi; ++mi)
         if (*mi != &victim && mi->can_see(maniac) && mi->can_go_frenzy() && could_harm(&maniac, *mi))
             witnesses.push_back(*mi);
 
@@ -3532,23 +3537,13 @@ item_def* monster_die(monster& mons, killer_type killer,
 
     item_def* corpse = nullptr;
     if (leaves_corpse && !was_banished && !spectralised && !corpse_consumed)
-    {
-        // Have to add case for disintegration effect here? {dlb}
-        item_def* daddy_corpse = nullptr;
-
-        if (mons.type == MONS_GOBLIN_RIDER)
-        {
-            daddy_corpse = mounted_kill(&mons, MONS_WYVERN, killer, killer_index);
-            mons.type = MONS_GOBLIN;
-        }
-        else if (mons.type == MONS_SPRIGGAN_RIDER)
-        {
-            daddy_corpse = mounted_kill(&mons, MONS_HORNET, killer, killer_index);
-            mons.type = MONS_SPRIGGAN;
-        }
         corpse = place_monster_corpse(mons);
+
+    if (mons_is_rider(mons.type) && !was_banished)
+    {
+        item_def* mount_corpse = mounted_kill(&mons, mons_mount_type(mons.type), killer, killer_index);
         if (!corpse)
-            corpse = daddy_corpse;
+            corpse = mount_corpse;
     }
 
     const unsigned int player_xp = gives_player_xp
@@ -3654,17 +3649,6 @@ item_def* monster_die(monster& mons, killer_type killer,
         beogh_follower_banished(mons);
     }
 
-    // If we kill an invisible monster reactivate autopickup.
-    // We need to check for actual invisibility rather than whether we
-    // can see the monster. There are several edge cases where a monster
-    // is visible to the player but we still need to turn autopickup
-    // back on, such as TSO's halo or sticky flame. (jpeg)
-    if (you.see_cell(mons.pos()) && mons.has_ench(ENCH_INVIS)
-        && !mons.friendly())
-    {
-        autotoggle_autopickup(false);
-    }
-
     crawl_state.dec_mon_acting(&mons);
     monster_cleanup(&mons);
 
@@ -3763,6 +3747,9 @@ void monster_cleanup(monster* mons)
     if (mons_is_tentacle_head(mons_base_type(*mons)))
         destroy_tentacles(mons);
 
+    // Erase any indicators of this monster's previous positions.
+    env.invis_knowledge.update(*mons);
+
     const mid_t mid = mons->mid;
     env.mid_cache.erase(mid);
 
@@ -3781,30 +3768,32 @@ void monster_cleanup(monster* mons)
     mons->reset();
 }
 
-item_def* mounted_kill(monster* daddy, monster_type mc, killer_type killer,
+// Simulates the death of one 'half' of a given rider monster, while leaving the
+// passed monster itself alive (or dead, if it's already dead).
+item_def* mounted_kill(monster* real_mon, monster_type mc, killer_type killer,
                        int killer_index)
 {
     monster mon;
     mon.type = mc;
-    mon.set_position(daddy->pos());
+    mon.set_position(real_mon->pos());
     define_monster(mon); // assumes mc is not a zombie
-    mon.flags = daddy->flags;
+    mon.flags = real_mon->flags;
 
     // Need to copy ENCH_SUMMON_TIMER etc. or we could get real XP/meat from a summon.
-    mon.enchantments = daddy->enchantments;
-    mon.ench_cache = daddy->ench_cache;
+    mon.enchantments = real_mon->enchantments;
+    mon.ench_cache = real_mon->ench_cache;
 
-    mon.attitude = daddy->attitude;
-    mon.damage_friendly = daddy->damage_friendly;
-    mon.damage_total = daddy->damage_total;
+    mon.attitude = real_mon->attitude;
+    mon.damage_friendly = real_mon->damage_friendly;
+    mon.damage_total = real_mon->damage_total;
     // Keep the rider's name, if it had one (Mercenary card).
-    if (!daddy->mname.empty() && mon.type == MONS_SPRIGGAN)
-        mon.mname = daddy->mname;
-    if (daddy->props.exists(REAPING_DAMAGE_KEY))
+    if (!real_mon->mname.empty() && mon.type == MONS_SPRIGGAN)
+        mon.mname = real_mon->mname;
+    if (real_mon->props.exists(REAPING_DAMAGE_KEY))
     {
         dprf("Mounted kill: marking the other monster as reaped as well.");
-        mon.props[REAPING_DAMAGE_KEY].get_int() = daddy->props[REAPING_DAMAGE_KEY].get_int();
-        mon.props[REAPER_KEY].get_int() = daddy->props[REAPER_KEY].get_int();
+        mon.props[REAPING_DAMAGE_KEY].get_int() = real_mon->props[REAPING_DAMAGE_KEY].get_int();
+        mon.props[REAPER_KEY].get_int() = real_mon->props[REAPER_KEY].get_int();
     }
 
     return monster_die(mon, killer, killer_index, false, true);
@@ -3901,7 +3890,7 @@ int dismiss_monsters(string pattern)
     const bool los     = pattern == "los";
 
     // Dismiss by regex.
-    text_pattern tpat(pattern);
+    text_pattern tpat(pattern, true);
     int ndismissed = 0;
     for (monster_iterator mi; mi; ++mi)
     {
@@ -3917,6 +3906,20 @@ int dismiss_monsters(string pattern)
             ++ndismissed;
         }
     }
+
+    bool removed_lurker = false;
+    for (int i = env.lurkers.size() - 1; i >= 0; --i)
+    {
+        if (tpat.empty() || tpat.matches(env.lurkers[i].mon.mons.name(DESC_PLAIN, true)))
+        {
+            ++ndismissed;
+            env.lurkers.erase(env.lurkers.begin() + i);
+            removed_lurker = true;
+        }
+    }
+    if (removed_lurker)
+        init_lurker_map();
+
 
     return ndismissed;
 }
@@ -4236,28 +4239,8 @@ void elven_twin_died(monster* twin, bool in_transit, killer_type killer, int kil
             mpr(death_message);
     }
 
-    // Upgrade the spellbook here, as elven_twin_energize
-    // may not be called due to lack of visibility.
-    if (mons_is_mons_class(mons, MONS_DOWAN)
-                                        && !(mons->flags & MF_POLYMORPHED))
-    {
-        // Don't mess with Dowan's spells if he's been polymorphed: most
-        // possible forms have no spells, and the few that do (e.g. boggart)
-        // have way more fun spells than this. If this ever changes, the
-        // following code would need to be rewritten, as it'll crash.
-        // TODO: this is a fairly brittle way of upgrading Dowan...
-        ASSERT(mons->spells.size() >= 5);
-        mons->spells[0].spell = SPELL_STONE_ARROW;
-        mons->spells[1].spell = SPELL_THROW_ICICLE;
-        mons->spells[3].spell = SPELL_BLINK;
-        // Nothing with 6.
-
-        // Indicate that he has an updated spellbook.
-        mons->props[CUSTOM_SPELLS_KEY] = true;
-    }
-
     // Finally give them new energy
-    if (mons->can_see(you) && !mons->has_ench(ENCH_FRENZIED))
+    if (!mons->has_ench(ENCH_FRENZIED))
         elven_twin_energize(mons);
     else
         mons->props[ELVEN_ENERGIZE_KEY] = true;
@@ -4283,6 +4266,23 @@ void elven_twin_energize(monster* mons)
         ASSERT(mons_is_mons_class(mons, MONS_DOWAN));
         if (mons->observable())
             simple_monster_message(*mons, " seems to find hidden reserves of power!");
+
+        // Upgrade the spellbook.
+        if (!(mons->flags & MF_POLYMORPHED))
+        {
+            // Don't mess with Dowan's spells if he's been polymorphed, as
+            // giving his new form spells very likely makes no sense.
+            //
+            // TODO: this is a fairly brittle way of upgrading Dowan, as it is
+            // coupled to the order of his spellbook.
+            ASSERT(mons->spells.size() >= 5);
+            mons->spells[0].spell = SPELL_STONE_ARROW;
+            mons->spells[1].spell = SPELL_THROW_ICICLE;
+            mons->spells[3].spell = SPELL_BLINK;
+
+            // Indicate that he has an updated spellbook.
+            mons->props[CUSTOM_SPELLS_KEY] = true;
+        }
 
         mons->add_ench(mon_enchant(ENCH_HASTE, mons, INFINITE_DURATION));
         mons->props[ELVEN_IS_ENERGIZED_KEY] = true;

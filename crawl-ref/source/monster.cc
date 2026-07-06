@@ -44,6 +44,7 @@
 #include "items.h"
 #include "libutil.h"
 #include "makeitem.h"
+#include "map-knowledge.h"
 #include "message.h"
 #include "misc.h"
 #include "mon-abil.h"
@@ -1192,6 +1193,17 @@ bool monster::pickup_launcher(item_def &launch, bool msg, bool force)
     if (!force && !_needs_ranged_attack(this))
         return false;
 
+    const bool dual_wielding = mons_wields_two_weapons(*this);
+    if (dual_wielding)
+    {
+        // If we have either weapon slot free, pick up the weapon.
+        if (inv[MSLOT_WEAPON] == NON_ITEM)
+            return pickup(launch, MSLOT_WEAPON, msg);
+
+        if (inv[MSLOT_ALT_WEAPON] == NON_ITEM)
+            return pickup(launch, MSLOT_ALT_WEAPON, msg);
+    }
+
     const int mdam_rating = mons_weapon_damage_rating(launch);
     for (int i = MSLOT_WEAPON; i <= MSLOT_ALT_WEAPON; ++i)
     {
@@ -1199,6 +1211,11 @@ bool monster::pickup_launcher(item_def &launch, bool msg, bool force)
         const item_def *old_weapon = mslot_item(slot);
         if (!old_weapon)
             return pickup(launch, slot, msg);
+
+        // If dual-wielding, don't mix types. If not, don't pick up two ranged
+        // weapons.
+        if (!is_range_weapon(*old_weapon))
+            continue;
 
         // If the old weapon is better than the new one, or just as
         // good and with as good a brand, don't bother swapping.
@@ -1652,6 +1669,10 @@ bool monster::pickup_armour(item_def &item, bool msg, bool force)
         {
             slot = SLOT_BODY_ARMOUR;
         }
+        break;
+    case ARM_SCARF:
+        if (base_type == MONS_GOJI)
+            slot = SLOT_BODY_ARMOUR;
         break;
     case ARM_GLOVES:
         if (base_type == MONS_NIKOLA)
@@ -2120,7 +2141,7 @@ static string _mon_special_name(const monster& mon, description_level_type desc,
         return _invalid_monster_str(mon.type);
 
     // Handle non-visible case first.
-    if (!force_seen && !mon.observable())
+    if (!force_seen && !mon.observable() && !you.aware_of(mon))
     {
         switch (desc)
         {
@@ -2153,6 +2174,8 @@ string monster::name(description_level_type desc, bool force_vis,
     // i.e. to produce "the Maras" instead of just "Maras"
     if (force_article)
         mi.mb.set(MB_NAME_UNQUALIFIED, false);
+    if (force_vis)
+        mi.mb.set(MB_KNOWN_INVIS, false);
     return mi.proper_name(desc)
 #ifdef DEBUG_MONINDEX
     // This is incredibly spammy, too bad for regular debug builds, but
@@ -2171,6 +2194,8 @@ string monster::base_name(description_level_type desc, bool force_vis) const
         return s;
 
     monster_info mi(this, MILEV_NAME);
+    if (force_vis)
+        mi.mb.set(MB_KNOWN_INVIS, false);
     return mi.common_name(desc);
 }
 
@@ -2181,12 +2206,13 @@ string monster::full_name(description_level_type desc) const
         return s;
 
     monster_info mi(this, MILEV_NAME);
+    mi.mb.set(MB_KNOWN_INVIS, false);
     return mi.full_name(desc);
 }
 
 string monster::pronoun(pronoun_type pro, bool force_visible) const
 {
-    const bool seen = force_visible || you.can_see(*this);
+    const bool seen = force_visible || you.aware_of(*this);
     if (seen && props.exists(MON_GENDER_KEY))
     {
         return decline_pronoun((gender_type)props[MON_GENDER_KEY].get_int(),
@@ -2197,7 +2223,7 @@ string monster::pronoun(pronoun_type pro, bool force_visible) const
 
 bool monster::pronoun_plurality(bool force_visible) const
 {
-    const bool seen = force_visible || you.can_see(*this);
+    const bool seen = force_visible || you.aware_of(*this);
     if (seen && props.exists(MON_GENDER_KEY))
         return props[MON_GENDER_KEY].get_int() == GENDER_NEUTRAL;
 
@@ -3507,6 +3533,8 @@ int monster::known_chaos(bool check_spells_god) const
         || type == MONS_CRAWLING_FLESH_CAGE
         || type == MONS_ABOMINATION_SMALL
         || type == MONS_ABOMINATION_LARGE
+        || type == MONS_ABYSSAL_ACOLYTE
+        || type == MONS_HERALD_OF_THE_ABYSS
         || type == MONS_MUTANT_BEAST
         || type == MONS_TELENCEPHALON       // Experimental mutant.
         || type == MONS_MONGREL_WURM       // Hybrid breed mutants.
@@ -5344,6 +5372,7 @@ static bool _mons_is_skeletal(int mc)
            || mc == MONS_BONE_DRAGON
            || mc == MONS_SKELETAL_WARRIOR
            || mc == MONS_ANCIENT_CHAMPION
+           || mc == MONS_ANTIQUE_CHAMPION
            || mc == MONS_REVENANT_SOULMONGER
            || mc == MONS_WEEPING_SKULL
            || mc == MONS_LAUGHING_SKULL
@@ -5510,6 +5539,24 @@ void monster::finalise_movement(const actor* to_blame)
         dungeon_events.fire_position_event(DET_MONSTER_MOVED, pos());
         if (has_ench(ENCH_SUNDER_CHARGE))
             del_ench(ENCH_SUNDER_CHARGE);
+
+        // If a known invisible monster moves, its position stops being known
+        // to the player, but you should still remember where it last was.
+        if (flags & MF_KNOWN_INVISIBLE)
+        {
+            flags &= ~MF_KNOWN_INVISIBLE;
+            env.invis_knowledge.update(*this, false, last_move_pos);
+        }
+    }
+
+    if (invisible())
+    {
+        if (!airborne() && feat_is_water(env.grid(pos())))
+            sense_if_invisible();
+
+        if (cloud_struct *cloud = cloud_at(pos()))
+            if (is_opaque_cloud(cloud->type) && !is_insubstantial())
+                sense_if_invisible();
     }
 
     if (!(mons_habitat(*this) & HT_DRY_LAND)
@@ -6118,14 +6165,16 @@ void monster::react_to_damage(const actor *oppressor, int damage,
     {
         place_cloud(CLOUD_FIRE, pos(), 20 + random2(15), oppressor, 5);
     }
-    else if (type == MONS_SPRIGGAN_RIDER || type == MONS_GOBLIN_RIDER)
+    else if (mons_is_rider(type))
     {
         if (hit_points + damage > max_hit_points / 2)
             damage = max_hit_points / 2 - hit_points;
-        if (damage > 0 && x_chance_in_y(damage, damage + hit_points)
+        if (damage > 0
+            && (x_chance_in_y(damage, damage + hit_points)
+                || type == MONS_GOJI && hit_points * 5 <= max_hit_points * 2)
             && flavour != BEAM_TORMENT_DAMAGE)
         {
-            bool fly_died = coinflip();
+            bool mount_died = type != MONS_GOJI && coinflip();
             monster_type dead_mon     = MONS_PROGRAM_BUG;
             int old_hp                = hit_points;
             auto old_flags            = flags;
@@ -6134,18 +6183,18 @@ void monster::react_to_damage(const actor *oppressor, int damage,
             int8_t old_ench_countdown = ench_countdown;
             string old_name = mname;
 
-            if (!fly_died)
+            if (!mount_died)
                 monster_drop_things(this, mons_aligned(oppressor, &you));
 
-            if (type == MONS_SPRIGGAN_RIDER)
+            if (mount_died)
             {
-                type = fly_died ? MONS_SPRIGGAN : MONS_HORNET;
-                dead_mon = fly_died ? MONS_HORNET : MONS_SPRIGGAN;
+                dead_mon = mons_mount_type(type);
+                type = mons_rider_type(type);
             }
-            else if (type == MONS_GOBLIN_RIDER)
+            else
             {
-                type = fly_died ? MONS_GOBLIN : MONS_WYVERN;
-                dead_mon = fly_died ? MONS_WYVERN : MONS_GOBLIN;
+                dead_mon = mons_rider_type(type);
+                type = mons_mount_type(type);
             }
 
             define_monster(*this);
@@ -6154,6 +6203,11 @@ void monster::react_to_damage(const actor *oppressor, int damage,
             enchantments   = old_ench;
             ench_cache     = old_ench_cache;
             ench_countdown = old_ench_countdown;
+            if (type == MONS_GHOST_MOTH)
+            {
+                add_ench(mon_enchant(ENCH_INVIS, this, INFINITE_DURATION));
+                mons_add_blame(this, "once ridden by Goji");
+            }
             // Keep the rider's name, if it had one (Mercenary card).
             if (!old_name.empty())
                 mname = old_name;
@@ -6166,10 +6220,10 @@ void monster::react_to_damage(const actor *oppressor, int damage,
                   ? oppressor->mindex() : NON_MONSTER);
 
             // Now clear the name, if the rider just died.
-            if (!fly_died)
+            if (!mount_died)
                 mname.clear();
 
-            if (fly_died && !is_habitable(pos()))
+            if (mount_died && !is_habitable(pos()))
             {
                 hit_points = 0;
                 if (observable())
@@ -6182,7 +6236,7 @@ void monster::react_to_damage(const actor *oppressor, int damage,
                              "deep water and drowns");
                 }
             }
-            else if (fly_died && observable())
+            else if (mount_died && observable())
             {
                 mprf("%s falls from %s now dead mount.",
                      name(DESC_THE).c_str(),
@@ -6613,7 +6667,7 @@ bool monster::attempt_escape()
 
     if (x_chance_in_y(escape_pow, hold_pow))
     {
-        stop_being_constricted(true);
+        stop_being_constricted();
         return true;
     }
     else
@@ -6897,4 +6951,26 @@ int monster::threat_range(bool include_lof_requiring, bool include_lof_ignoring)
     }
 
     return range;
+}
+
+/**
+ * Possibly inform the player about this monster's location and presence,
+ * if it is invisible but otherwise in LoS (eg: after shooting something at
+ * them or being attacked by them.)
+ *
+ * @param reveal_position   If true (the default), unambiguously reveals the
+ *                          monster's current position. If false (for instance,
+ *                          if a monster does something that only suggests it is
+ *                          'somewhere in LoS'), add only a general hint to
+ *                          invis knowledge.
+ */
+void monster::sense_if_invisible(bool reveal_position)
+{
+    if (!has_ench(ENCH_INVIS) || visible_to(&you) || !you.see_cell(pos()))
+        return;
+
+    if (reveal_position)
+        flags |= MF_KNOWN_INVISIBLE;
+
+    env.invis_knowledge.update(*this, reveal_position);
 }

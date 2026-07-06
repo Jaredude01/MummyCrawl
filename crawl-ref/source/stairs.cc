@@ -280,6 +280,7 @@ void leaving_level_now(dungeon_feature_type stair_used)
         vault_list.push_back("[exit]");
 #endif
         clear_abyssal_rune_knowledge();
+        you.props.erase(ABYSS_AREAS_SEEN_KEY);
     }
 
     // XXX: Don't consider things like banishment or Duel, which use 'stairs'
@@ -291,6 +292,7 @@ void leaving_level_now(dungeon_feature_type stair_used)
 
     end_terrain_changes(TERRAIN_CHANGE_GOLUBRIA);
     _remove_unstable_monsters();
+    cancel_pending_lurkers();
 
     // Allow players to be interrupted by sensed monsters on their return to this level.
     for (monster_iterator mi; mi; ++mi)
@@ -1121,6 +1123,9 @@ void floor_transition(dungeon_feature_type how,
     if (you.unrand_equipped(UNRAND_VAINGLORY))
         _vainglory_arrival();
 
+    if (you.wearing_ego(OBJ_ARMOUR, SPARM_MESMERISM))
+        you.duration[DUR_MESMERISM_COOLDOWN] += random_range(50, 80);
+
     trackers_init_new_level();
 
     if (update_travel_cache && !shaft)
@@ -1132,7 +1137,6 @@ void floor_transition(dungeon_feature_type how,
     // Apply location effects.
     you.trigger_movement_effects(MV_NO_TRAVEL_STOP);
 
-    autotoggle_autopickup(false);
     request_autopickup();
 }
 

@@ -302,7 +302,7 @@ int current_horror_level()
 {
     int horror_level = 0;
 
-    for (monster_near_iterator mi(&you, LOS_NO_TRANS); mi; ++mi)
+    for (monster_near_iterator mi(&you, LOS_NO_TRANS, true); mi; ++mi)
     {
         if (mons_aligned(*mi, &you)
             || !mons_is_threatening(**mi)
@@ -519,7 +519,7 @@ void player_reacts_to_monsters()
         if (you.constricted_type == CONSTRICT_ROOTS)
             mprf("The roots around you sink back into the ground.");
         else if (you.constricted_type == CONSTRICT_BVC)
-            mprf("The zombie hands holding you return to the earth.");
+            mprf("The zombie hands constricting you return to the earth.");
 
         you.stop_being_constricted(true);
     }
@@ -764,25 +764,24 @@ static void _decrement_durations()
 
     _decrement_transform_duration(delay);
 
-    if (you.attribute[ATTR_SWIFTNESS] >= 0)
+    if (you.duration[DUR_SWIFTNESS])
     {
         if (_decrement_a_duration(DUR_SWIFTNESS, delay,
                                   "You feel sluggish.", coinflip(),
                                   "You start to feel a little slower."))
         {
             // Start anti-swiftness.
-            you.duration[DUR_SWIFTNESS] = you.attribute[ATTR_SWIFTNESS];
-            you.attribute[ATTR_SWIFTNESS] = -1;
-        }
-    }
-    else
-    {
-        if (_decrement_a_duration(DUR_SWIFTNESS, delay,
-                                  "You no longer feel sluggish.", coinflip(),
-                                  "You start to feel a little faster."))
-        {
+            you.duration[DUR_ANTISWIFT] = you.attribute[ATTR_SWIFTNESS];
             you.attribute[ATTR_SWIFTNESS] = 0;
         }
+    }
+    else if (you.duration[DUR_ANTISWIFT])
+    {
+        // We don't make this a normal duration so that it doesn't decrement
+        // later in this function on the turn where swiftness wears off.
+        _decrement_a_duration(DUR_ANTISWIFT, delay,
+                              "You no longer feel sluggish.", coinflip(),
+                              "You start to feel a little faster.");
     }
 
     // Decrement Powered By Death strength

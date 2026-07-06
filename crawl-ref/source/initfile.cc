@@ -431,11 +431,7 @@ const vector<GameOption*> game_options::build_options_list()
 #endif // else case of defined(DGAMELAUNCH)
 
         new BoolGameOption(SIMPLE_NAME(autopickup_starting_ammo), true),
-        new MultipleChoiceGameOption<int>(
-            autopickup_on, {"default_autopickup"},
-            1,
-            {{"true", 1}, // XX this would be better as an enum
-             {"false", 0}}, true),
+        new BoolGameOption(autopickup_on, {"default_autopickup"}, true),
         new StringGameOption(SIMPLE_NAME(game_seed), "", false,
             [this]() {
                 // special handling because of the large type.
@@ -953,7 +949,7 @@ const vector<GameOption*> game_options::build_options_list()
         // it'd be a pain to maintain without further macros
 #ifdef USE_TILE_WEB
         new BoolGameOption(SIMPLE_NAME(tile_realtime_anim), false),
-        new BoolGameOption(SIMPLE_NAME(tile_level_map_hide_messages), true),
+        new BoolGameOption(SIMPLE_NAME(tile_level_map_hide_messages), false),
         new BoolGameOption(SIMPLE_NAME(tile_level_map_hide_sidebar), false),
         new BoolGameOption(SIMPLE_NAME(tile_web_mouse_control), true),
         new MultipleChoiceGameOption<string>(
@@ -4822,6 +4818,7 @@ enum commandline_option_type
     CLO_MACRO,
     CLO_MAPSTAT,
     CLO_MAPSTAT_DUMP_DISCONNECT,
+    CLO_MAPSTAT_VETO_CLOSETS,
     CLO_OBJSTAT,
     CLO_ITERATIONS,
     CLO_FORCE_MAP,
@@ -4883,6 +4880,7 @@ static set<commandline_option_type> clo_headless_ok = {
     CLO_EDIT_BONES,
     CLO_MAPSTAT,
     CLO_MAPSTAT_DUMP_DISCONNECT,
+    CLO_MAPSTAT_VETO_CLOSETS,
     CLO_OBJSTAT,
 #ifndef USE_TILE_LOCAL
 // TODO: still too crashy in local tiles to enable
@@ -4904,8 +4902,9 @@ static const char *cmd_ops[] =
 {
     "scores", "name", "species", "background", "dir", "rc", "rcdir", "tscores",
     "vscores", "scorefile", "morgue", "macro", "mapstat", "dump-disconnect",
-    "objstat", "iters", "force-map", "arena", "dump-maps", "test", "script",
-    "builddb", "help", "version", "seed", "pregen", "save-version", "sprint",
+    "veto-closets", "objstat", "iters", "force-map", "arena", "dump-maps",
+    "test", "script", "builddb", "help", "version", "seed", "pregen",
+    "save-version", "sprint",
     "extra-opt-first", "extra-opt-last", "sprint-map", "edit-save",
     "print-charset", "tutorial", "wizard", "explore", "no-save",
     "no-player-bones", "gdb", "no-gdb", "nogdb", "throttle", "no-throttle",
@@ -5893,6 +5892,14 @@ bool parse_args(int argc, char **argv, bool rc_only)
 #else
             end(1, false, "%s", dbg_stat_err);
 #endif
+        case CLO_MAPSTAT_VETO_CLOSETS:
+#ifdef DEBUG_STATISTICS
+            crawl_state.map_stat_veto_closets = true;
+            break;
+#else
+            end(1, false, "%s", dbg_stat_err);
+#endif
+
         case CLO_MAPSTAT_DUMP_DISCONNECT:
 #ifdef DEBUG_STATISTICS
             crawl_state.map_stat_dump_disconnect = true;

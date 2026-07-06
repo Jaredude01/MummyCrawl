@@ -324,6 +324,8 @@ void spawn_random_monsters()
         }
     }
 
+    mg.flags |= MG_AUTOLURK;
+
     mons_place(mg);
     viewwindow();
     update_screen();
@@ -1654,8 +1656,9 @@ static bool _mc_too_slow_for_normal_undead(monster_type mon)
 
 static bool _mc_bad_wretch(monster_type mon)
 {
-    // goofy on-death effect - probably other things could go here too
-    return mon == MONS_SPRIGGAN_DRUID;
+    // goofy on-death / near-death effects
+    return mon == MONS_SPRIGGAN_DRUID ||
+           mon == MONS_STAR_JELLY;
 }
 
 /**
@@ -1942,6 +1945,9 @@ static const map<monster_type, band_set> bands_by_leader = {
     { MONS_ALLIGATOR,       { { 5, 0, []() {
         return !player_in_branch(BRANCH_LAIR); }},
                                   {{ BAND_ALLIGATOR, {1, 2} }}}},
+    { MONS_ABYSSAL_ACOLYTE, { { 0, 0, []() {
+        return player_in_branch(BRANCH_ABYSS); }},
+                                  {{ BAND_ABYSSAL_ACOLYTES, {1, 3} }}}},
     { MONS_FORMLESS_JELLYFISH, { { 0, 0, []() {
         return player_in_branch(BRANCH_SLIME); }},
                                   {{ BAND_JELLYFISH, {1, 3} }}}},
@@ -2085,6 +2091,7 @@ static const map<monster_type, band_set> bands_by_leader = {
     { MONS_THRASHING_HORROR, { {}, {{ BAND_THRASHING_HORRORS, {0, 1} }}}},
     { MONS_BRAIN_WORM, { {}, {{ BAND_BRAIN_WORMS, {0, 1} }}}},
     { MONS_LAUGHING_SKULL, { {}, {{ BAND_LAUGHING_SKULLS, {0, 1} }}}},
+    { MONS_HERALD_OF_THE_ABYSS, { {}, {{ BAND_HERALD_FOLLOWERS, {0, 1} }}}},
     { MONS_WEEPING_SKULL, { {}, {{ BAND_WEEPING_SKULLS, {0, 1} }}}},
     { MONS_SPHINX_MARAUDER, { {}, {{ BAND_HARPIES, {0, 1} }}}},
     { MONS_PROTEAN_PROGENITOR, { {}, {{ BAND_PROTEAN_PROGENITORS, {0, 1} }}}},
@@ -2252,6 +2259,11 @@ static band_type _choose_band(monster_type mon_type, int *band_size_p,
         band_size = one_chance_in(3) ? 2 : 1;
         break;
 
+    case MONS_HERALD_OF_THE_ABYSS:
+        if (player_in_branch(BRANCH_ABYSS) && x_chance_in_y(3, 4))
+            band_size = 2;
+        break;
+
     case MONS_BRAIN_WORM:
         if (player_in_branch(BRANCH_ABYSS))
             band_size = random2(you.depth) / 2;
@@ -2417,16 +2429,16 @@ static const map<band_type, vector<member_possibilities>> band_membership = {
     { BAND_BLASTMINER,          {{{MONS_KOBOLD_BLASTMINER, 1}}}},
     { BAND_THERMIC_DYNAMOS,     {{{MONS_THERMIC_DYNAMO, 1}}}},
     { BAND_PROTEAN_PROGENITORS, {{{MONS_PROTEAN_PROGENITOR, 1}}}},
-    { BAND_DEEP_ELF_KNIGHT,     {{{MONS_DEEP_ELF_AIR_MAGE, 46},
-                                  {MONS_DEEP_ELF_FIRE_MAGE, 46},
+    { BAND_DEEP_ELF_KNIGHT,     {{{MONS_DEEP_ELF_ZEPHYRMANCER, 46},
+                                  {MONS_DEEP_ELF_PYROMANCER, 46},
                                   {MONS_DEEP_ELF_KNIGHT, 24},
                                   {MONS_DEEP_ELF_ARCHER, 24},
                                   {MONS_DEEP_ELF_DEATH_MAGE, 3},
                                   {MONS_DEEP_ELF_DEMONOLOGIST, 2},
                                   {MONS_DEEP_ELF_ANNIHILATOR, 2},
                                   {MONS_DEEP_ELF_SORCERER, 2}}}},
-    { BAND_DEEP_ELF_HIGH_PRIEST, {{{MONS_DEEP_ELF_AIR_MAGE, 3},
-                                   {MONS_DEEP_ELF_FIRE_MAGE, 3},
+    { BAND_DEEP_ELF_HIGH_PRIEST, {{{MONS_DEEP_ELF_ZEPHYRMANCER, 3},
+                                   {MONS_DEEP_ELF_PYROMANCER, 3},
                                    {MONS_DEEP_ELF_KNIGHT, 2},
                                    {MONS_DEEP_ELF_ARCHER, 2},
                                    {MONS_DEEP_ELF_DEMONOLOGIST, 1},
@@ -2468,6 +2480,23 @@ static const map<band_type, vector<member_possibilities>> band_membership = {
                                   {MONS_VERY_UGLY_THING, 1}},
 
                                  {{MONS_VERY_UGLY_THING, 1}}}},
+
+    { BAND_ABYSSAL_ACOLYTES,    {{{MONS_ABYSSAL_ACOLYTE, 5},
+                                  {MONS_ABOMINATION_SMALL, 5},
+                                  {MONS_EFREET, 1},
+                                  {MONS_FREEZING_WRAITH, 1}},
+
+                                {{MONS_ABOMINATION_SMALL, 9},
+                                 {MONS_UGLY_THING, 1}}}},
+
+    { BAND_HERALD_FOLLOWERS,    {{{MONS_ABYSSAL_ACOLYTE, 10},
+                                  {MONS_COGNITOGAUNT, 4},
+                                  {MONS_RAKSHASA, 3},
+                                  {MONS_WORLDBINDER, 3}},
+
+                                 {{MONS_ABOMINATION_LARGE, 4},
+                                  {MONS_GOLDEN_EYE, 3},
+                                  {MONS_THRASHING_HORROR, 3}}}},
 
     { BAND_AMOEBA_ORGANS,       {{{MONS_GLASS_EYE, 2},
                                   {MONS_GLOWING_ORANGE_BRAIN, 1}}}},
@@ -2948,6 +2977,9 @@ monster* mons_place(mgen_data mg)
     monster* creation = place_monster(mg);
     if (!creation)
         return 0;
+
+    if ((mg.flags & MG_AUTOLURK) && mons_class_flag(creation->type, M_LURKER))
+        start_lurking_at(*creation, creation->pos());
 
     dprf(DIAG_MONPLACE, "Created %s.", creation->base_name(DESC_A, true).c_str());
 

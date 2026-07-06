@@ -353,12 +353,16 @@ static const duration_def duration_data[] =
       BLUE, "Swift",
       "swift", "swiftness",
       "You can move swiftly.", D_DISPELLABLE | D_EXPIRES, {}, 6},
+    { DUR_ANTISWIFT,
+      RED, "-Swift",
+      "unswift", "antiswiftness",
+      "You are covering ground slowly.", D_NEGATIVE, {}, 6},
     { DUR_TELEPORT,
       LIGHTBLUE, "Tele",
       "about to teleport", "teleport",
       "You are about to teleport.", D_DISPELLABLE /*but special-cased*/,
       {{ "", []() {
-          you_teleport_now();
+          you_teleport_now("", true);
           untag_followers();
       }}}},
     { DUR_DEATHS_DOOR,

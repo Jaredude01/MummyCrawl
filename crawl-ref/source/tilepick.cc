@@ -879,9 +879,14 @@ void apply_variations(const tile_flavour &flv, tileidx_t *bg,
     if (tile == TILE_FLOOR_NORMAL)
         tile = flv.floor;
     else if (tile == TILE_WALL_NORMAL)
+    {
         tile = flv.wall;
+        needs_tile_picking = is_torch_tile(tile);
+    }
     else if (is_door_tile(tile))
     {
+        unsigned short door_connect = env.map_knowledge(gc).door_connect();
+        ASSERT(door_connect < 7);
         tileidx_t override = flv.feat;
         // For vaults overriding door tiles, like Cigotuvi's Fleshworks.
         if (is_door_tile(override))
@@ -890,11 +895,11 @@ void apply_variations(const tile_flavour &flv, tileidx_t *bg,
             bool runed = (tile == TILE_DNGN_RUNED_DOOR);
             bool broken = (tile == TILE_DNGN_BROKEN_DOOR);
             int offset = _get_door_offset(override, opened, runed, broken,
-                flv.special);
+                                          door_connect);
             tile = override + offset;
         }
         else
-            tile = tile + min((int)flv.special, 6);
+            tile = tile + door_connect;
     }
     else if (tile == TILE_DNGN_TRAP_WEB)
     {
@@ -1298,7 +1303,7 @@ void tileidx_out_of_los(tile_with_flags_t *fg,
     // Override foreground for monsters/items
     if (env.map_knowledge(gc).detected_monster())
     {
-        ASSERT(cell.monster() == MONS_SENSED);
+        ASSERT(cell.mon_type() == MONS_SENSED);
         *fg = tileidx_monster_base(cell.monsterinfo()->base_type, 0);
     }
     else if (env.map_knowledge(gc).detected_item())
@@ -2280,6 +2285,15 @@ static tileidx_t _tileidx_monster_no_props(const monster_info& mon)
                 return TILEP_MONS_GOBLIN_RIDER_SPEARLESS;
         }
 
+        case MONS_GOJI:
+        {
+            const item_def * const weapon = mon.inv[MSLOT_WEAPON].get();
+            if (weapon && weapon->is_type(OBJ_WEAPONS, WPN_SPEAR))
+                return you.can_see_invisible() ? TILEP_MONS_GOJI_SEEN : TILEP_MONS_GOJI;
+            else
+                return you.can_see_invisible() ? TILEP_MONS_GOJI_SEEN_SPEARLESS : TILEP_MONS_GOJI_SPEARLESS;
+        }
+
         case MONS_REAPER:
         {
             const item_def * const weapon = mon.inv[MSLOT_WEAPON].get();
@@ -2557,6 +2571,16 @@ static tileidx_t _tileidx_monster_no_props(const monster_info& mon)
 tile_with_flags_t tileidx_monster(const monster_info& mons)
 {
     tileidx_t tile = _tileidx_monster_no_props(mons);
+
+    // Most natural casters of this spell get special tiles, but use a default
+    // icon in other cases.
+    if (mons.is(MB_PHASE_SHIFT) && !you.can_see_invisible())
+    {
+        tileidx_t phase_tile = tileidx_monster_phase_shift(mons.type);
+        if (phase_tile)
+            tile = phase_tile;
+    }
+
     tile_with_flags_t ch = tile;
 
     if ((mons.airborne() && !_tentacle_tile_not_flying(tile))
@@ -2705,6 +2729,9 @@ tile_with_flags_t tileidx_monster(const monster_info& mons)
     }
 #endif
 
+    if (mons.is(MB_KNOWN_INVIS))
+        ch |= TILE_FLAG_INVIS;
+
     return ch;
 }
 #endif
@@ -2794,6 +2821,8 @@ static const map<monster_info_flags, tileidx_t> monster_status_icons = {
     { MB_MUTE, TILEI_MUTE },
     { MB_EXPOSED, TILEI_EXPOSED },
     { MB_STAMPEDE, TILEI_STAMPEDE },
+    { MB_KNOWN_INVIS, TILEI_UNSEEN_INVIS_KNOWN },
+    { MB_INVISIBLE, TILEI_SEEN_INVIS },
 };
 
 set<tileidx_t> status_icons_for(const monster_info &mons)
@@ -2813,6 +2842,8 @@ set<tileidx_t> status_icons_for(const monster_info &mons)
     for (auto status : monster_status_icons)
         if (mons.is(status.first))
             icons.insert(status.second);
+    if (mons.is(MB_PHASE_SHIFT) && !tileidx_monster_phase_shift(mons.type))
+        icons.insert(TILEI_PHASE_SHIFT);
     return icons;
 }
 
@@ -2882,7 +2913,15 @@ tileidx_t tileidx_draco_base(const monster_info& mon)
 tileidx_t tileidx_draco_job(const monster_info& mon)
 {
     if (mons_is_draconian_job(mon.type))
+    {
+        // XXX: I kinda hate this.
+        if (mon.is(MB_PHASE_SHIFT) && mon.type == MONS_DRACONIAN_KNIGHT
+            && !you.can_see_invisible())
+        {
+            return TILEP_MONS_DRACONIAN_KNIGHT_PHASED;
+        }
         return get_mon_base_tile(mon.type);
+    }
     return 0;
 }
 
@@ -5279,4 +5318,17 @@ tileidx_t tileidx_parchment_overlay(int spell, int index)
 colour_t parchment_colour(spell_type spell)
 {
     return _parchment_colours[spell];
+}
+
+tileidx_t tileidx_monster_phase_shift(monster_type type)
+{
+    switch (type)
+    {
+        case MONS_DRACONIAN_KNIGHT:     return TILEP_MONS_DRACONIAN_KNIGHT_PHASED;
+        case MONS_OGRE_MAGE:            return TILEP_MONS_OGRE_MAGE_PHASED;
+        case MONS_EROLCHA:              return TILEP_MONS_EROLCHA_PHASED;
+        case MONS_DEEP_ELF_KNIGHT:      return TILEP_MONS_DEEP_ELF_KNIGHT_PHASED;
+        case MONS_ABYSSAL_ACOLYTE:      return TILEP_MONS_ABYSSAL_ACOLYTE_PHASED;
+        default:                        return 0;
+    }
 }
