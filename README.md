@@ -9,8 +9,12 @@ Those modifications led me to trying different things to familiarize myself with
 
 ## Changes from dungeon crawl
 * Necromancer starts with Kiku and all the of the necromancy spells I care about.
+
 * Modified the Lucky mutation to give 1/3 chance of changing items into artifacts at level 1 and 2/3 at level 2.
 * Created Royal Tastes mutation to only allow equipping artifacts.
+
+* Gave Mummy the Megawait ability, wait 6000 turns to regenerate the current floor.
+
 * Gave the mummy great aptitudes and mutations while I'm testing stuff, I expect I'll probably tone that down at some point.
 * Removed all species except Mummy.
 * Created Lesser Mummy which is the same as regular DCSS Mummy.
@@ -19,7 +23,11 @@ Those modifications led me to trying different things to familiarize myself with
 ## Planned Changes
 * Tomb replaces the dungeon exit and you must bring the orb of zot to a special Kiku altar inside to beat the game.
 * Create some sort of system to give mummies the mutations of other species as the game progresses.
-* Maybe give mummies inherent Wu Jian movement.
+* Maybe give mummies inherent Wu Jian movement for fun
+* Rework malevolence system and add flavor
+* Something for mummies to do with potions
+* Add unique enemies
+* New P god?
 
 ## License and history information
 
