@@ -7,6 +7,11 @@ Spit Poison ability
 
 Spits poison at a targeted creature.
 %%%%
+Megawait ability
+
+Spend countless turns waiting in your mummy tomb until the dungeon regenerates the floor you're on.
+Although this takes an aeon, your supernatural immobility only increases zot's attention as if you waited 6000 turns in the dungeon.
+%%%%
 Combustion Breath ability
 
 Breathes a blast of volatile embers that explode violently around each creature

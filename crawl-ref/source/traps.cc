@@ -746,7 +746,7 @@ void roll_trap_effects()
 
 static string _malev_msg()
 {
-    return make_stringf("A malevolent force fills %s...",
+    return make_stringf("You hear a coyote howl from nearby in %s...",
                         branches[you.where_are_you].longname);
 }
 

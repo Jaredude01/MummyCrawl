@@ -99,6 +99,7 @@
 #include "unicode.h"
 #include "view.h"
 #include "wiz-dgn.h"
+#include "zot.h"
 
 struct generic_cost
 {
@@ -346,7 +347,7 @@ static vector<ability_def> &_get_ability_list()
         { ABIL_SPIT_POISON, "Spit Poison",
             0, 0, 0, 5, {fail_basis::xl, 20, 1},
             abflag::breath | abflag::dir_or_target | abflag::not_self },
-        { ABIL_MEGAWAIT, "Wait an aeon",
+        { ABIL_MEGAWAIT, "Megawait",
 			0, 0, 0, -1, {}, abflag::none },
         { ABIL_GOLDEN_BREATH, "Golden Breath",
             0, 0, 0, 5, {}, abflag::drac_charges },
@@ -3323,7 +3324,7 @@ static spret _do_ability(const ability_def& abil, bool fail, dist *target,
 
         if (!player_tracer(ZAP_SPIT_POISON, power, beam))
             return spret::abort;
-        else
+        else 
         {
             fail_check();
             zapping(ZAP_SPIT_POISON, power, beam);
@@ -3334,7 +3335,15 @@ static spret _do_ability(const ability_def& abil, bool fail, dist *target,
     
     case ABIL_MEGAWAIT:
     {
-		wizard_recreate_level(); break;
+		int wait_turns = 6000;
+		if (turns_until_zot() > wait_turns)
+		{
+			wizard_recreate_level(); 
+			set_turns_until_zot((turns_until_zot()-(5999+wait_turns)));
+		}
+		else
+		mpr("There's not enough time to do that!");
+		break;
 	}
 
     case ABIL_IMBUE_SERVITOR:
