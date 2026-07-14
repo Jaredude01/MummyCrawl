@@ -63,7 +63,7 @@ const Branch branches[NUM_BRANCHES] =
       {}},
 #endif
 
-    { BRANCH_LAIR, BRANCH_DUNGEON, 4, 7, 4, 10,
+    { BRANCH_LAIR, BRANCH_DUNGEON, 4, 7, 5, 10,
       brflag::none,
       DNGN_ENTER_LAIR, DNGN_EXIT_LAIR, NUM_FEATURES,
       "Lair", "the Lair of Beasts", "Lair",
