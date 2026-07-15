@@ -1,0 +1,9 @@
+species = Mummy
+background = Necromancer
+fully_random = no
+default_manual_training = no
+quiver_menu_focus = false
+action_panel_orientation = horizontal
+action_panel_show = yes
+action_panel_scale = 100
+action_panel_font_size = 16
